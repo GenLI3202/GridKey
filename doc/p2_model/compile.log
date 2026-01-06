@@ -1,0 +1,36 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (MiKTeX 25.4) (preloaded format=pdflatex.fmt)
+ restricted \write18 enabled.
+entering extended mode
+(p2_bi_model_ggdp.tex
+LaTeX2e <2025-06-01> patch level 1
+L3 programming layer <2025-07-19>
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/base\article.cls
+Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/base\size11.clo))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/geometry\geometry.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/graphics\keyval.sty)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/iftex\ifvtex.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/iftex\iftex.sty))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/geometry\geometry.cfg
+))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/fontspec\fontspec.sty
+
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/l3packages/xparse\xpa
+rse.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/l3kernel\expl3.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/l3backend\l3backend-p
+dftex.def)))
+
+! Fatal Package fontspec Error: The fontspec package requires either XeTeX or
+(fontspec)                      LuaTeX.
+(fontspec)                      
+(fontspec)                      You must change your typesetting engine to,
+(fontspec)                      e.g., "xelatex" or "lualatex" instead of
+(fontspec)                      "latex" or "pdflatex".
+
+Type <return> to continue.
+ ...                                              
+                                                  
+l.101 \msg_fatal:nn {fontspec} {cannot-use-pdftex}
+                                                  
+

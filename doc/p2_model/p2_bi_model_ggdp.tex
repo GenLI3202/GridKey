@@ -1,0 +1,728 @@
+\documentclass[11pt, a4paper]{article}
+
+% --- UNIVERSAL PREAMBLE BLOCK ---
+% Geometry for A4 paper
+\usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2cm, right=2cm]{geometry}
+
+% Font and Language Setup
+\usepackage{fontspec}
+% Main language is english
+\usepackage[english]{babel}
+
+% Set default/Latin font to Sans Serif (as per instructions)
+% Noto Sans is a clean, modern font suitable for reports.
+\setmainfont{Latin Modern Roman}
+\setsansfont{Latin Modern Sans}
+\setmonofont{Latin Modern Mono}
+
+% --- DOCUMENT-SPECIFIC PACKAGES ---
+\usepackage{amsmath}    % For advanced math environments
+\usepackage{amssymb}    % For symbols like \mathbb
+\usepackage{booktabs}   % For professional tables (\toprule, \midrule, \bottomrule)
+\usepackage{graphicx}   % For images (though we use placeholders)
+\usepackage{caption}    % For table/figure captions
+\usepackage{fancyhdr}   % For headers and footers
+\usepackage[
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+]{hyperref} % For clickable links, MUST be loaded last
+
+% --- PAGE STYLE ---
+\pagestyle{fancy}
+\fancyhf{} % Clear all header and footer fields
+\fancyhead[L]{Huawei TechArena 2025: Phase II EMS Model}
+\fancyhead[R]{Gen Li (Team SoloGen)}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+% --- TITLE ---
+\title{Huawei TechArena 2025: BESS Energy Management System \\ \large Phase II Research Framework \& Mathematical Model}
+\author{Gen Li (Team SoloGen) \\ \small \textit{Based on Phase I Model and Literature Review}}
+\date{\today} % Or \date{October 31, 2025}
+
+% --- DOCUMENT START ---
+\begin{document}
+
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+This document outlines the mathematical formulation for the Phase II challenge of the Huawei TechArena 2025. This model directly extends the deterministic Mixed-Integer Linear Program (MILP) developed in Phase I. Responding to the practical constraints of the competition (deterministic data, open-source solvers), this framework explicitly avoids stochastic optimization.
+
+The Phase II model introduces two key extensions:
+\begin{enumerate}
+    \item \textbf{Market Integration:} It incorporates the new \textbf{aFRR Energy Market}, co-optimizing energy bids alongside the Day-Ahead (DA) energy market and the FCR/aFRR capacity markets.
+    \item \textbf{Degradation Modeling:} It replaces the simple "Daily Cycle Limit" (Cst-5) from Phase I with a sophisticated, linearized \textbf{degradation cost function}. This cost, subtracted from the objective, is based on the piecewise-linear models for both cyclic aging (Xu et al., 2017) and calendar aging (Collath et al., 2023), allowing the model to trade off revenue against battery lifetime dynamically.
+\end{enumerate}
+The resulting formulation remains a deterministic MILP, ensuring compatibility with open-source solvers while capturing the core economic and physical trade-offs of Phase II.
+\end{abstract}
+
+
+\section{Introduction}
+The Phase I model established a strong foundation for co-optimizing BESS bids across three markets: DA Energy, FCR Capacity, and aFRR Capacity. The primary goal of Phase II is to enhance this model's realism and profitability by integrating two new factors: the aFRR Energy Market and the economic impact of battery degradation.
+
+This document presents the revised mathematical formulation. It is designed to build directly upon the Phase I model, modifying existing constraints and adding new logic, rather than starting from a new, incompatible framework.
+
+
+
+\subsubsection*{Sets and Indices}
+\begin{tabular}{@{}ll}
+\toprule
+$T, t$ & Set and index for 15-minute time intervals $t \in \{1, ..., 35040\}$ \\
+$B, b$ & Set and index for 4-hour ancillary service blocks $b \in \{1, ..., 2190\}$ \\
+$J, j$ & Set and index for cycle degradation cost segments $j \in \{1, ..., J\}$ \\
+$I, i$ & Set and index for calendar degradation cost breakpoints $i \in \{1, ..., I\}$ \\
+\bottomrule
+\end{tabular}
+
+\subsubsection*{Parameters}
+\begin{tabular}{@{}lll}
+\toprule
+Symbol & Description & Unit \\
+\midrule
+$P_{DA}(t)$ & Day-ahead electricity price & EUR/MWh \\
+$P_{FCR}(b)$ & FCR capacity price & EUR/MW/h \\
+$P^{\mathrm{pos}}_{aFRR}(b)$ & Positive aFRR capacity price & EUR/MW/h \\
+$P^{\mathrm{neg}}_{aFRR}(b)$ & Negative aFRR capacity price & EUR/MW/h \\
+$P^{\mathrm{pos}}_{aFRR,E}(t)$ &  Positive aFRR energy price & EUR/MWh \\
+$P^{\mathrm{neg}}_{aFRR,E}(t)$ &  Negative aFRR energy price & EUR/MWh \\
+$E_{\mathrm{nom}}$ & Nominal energy capacity & kWh \\
+$P^{\mathrm{config}}_{\max}$ & Max charge/discharge power & kW \\
+$\eta_{\mathrm{ch}}, \eta_{\mathrm{dis}}$ & Charging/discharging efficiencies & - \\
+$SOC_{\min}, SOC_{\max}$ & Min/max SOC limits (fraction) & - \\
+$E^{\mathrm{seg}}_{j}$ &  Max energy capacity of segment $j$ & kWh \\
+$c^{\mathrm{cost}}_{j}$ &  Marginal cyclic degradation cost for segment $j$ & EUR/kWh \\
+$SOC^{\mathrm{point}}_i$ &  SOC breakpoint $i$ for calendar cost & kWh \\
+$Cost^{\mathrm{point}}_i$ &  Calendar degradation cost at breakpoint $i$ & EUR/hr \\
+$\alpha$ &  Degradation price (meta-parameter) & - \\
+\bottomrule
+\end{tabular}
+
+\subsubsection*{Decision Variables}
+\begin{tabular}{@{}lll}
+\toprule
+Symbol & Description & Type \\
+\midrule
+$p_{\mathrm{ch}}(t), p_{\mathrm{dis}}(t)$ & DA charge/discharge power & Cont. $\ge 0$ \\
+$p^{\mathrm{pos}}_{aFRR,E}(t)$ &  aFRR-E positive (discharge) power & Cont. $\ge 0$ \\
+$p^{\mathrm{neg}}_{aFRR,E}(t)$ &  aFRR-E negative (charge) power & Cont. $\ge 0$ \\
+$c_{fcr}(b)$ & FCR capacity bid & Cont. $\ge 0$ \\
+$c^{\mathrm{pos}}_{aFRR}(b)$ & Positive aFRR capacity bid & Cont. $\ge 0$ \\
+$c^{\mathrm{neg}}_{aFRR}(b)$ & Negative aFRR capacity bid & Cont. $\ge 0$ \\
+$p^{\mathrm{total}}_{\mathrm{ch}}(t), p^{\mathrm{total}}_{\mathrm{dis}}(t)$ &  Total charge/discharge power & Cont. $\ge 0$ \\
+$p^{\mathrm{ch}}_{j}(t), p^{\mathrm{dis}}_{j}(t)$ &  Charge/discharge power for segment $j$ & Cont. $\ge 0$ \\
+$e_{\mathrm{soc},j}(t)$ &  Energy stored in segment $j$ & Cont. $\ge 0$ \\
+$e_{\mathrm{soc}}(t)$ &  Total energy stored in BESS & Cont. $\ge 0$ \\
+$c^{\mathrm{cal}}_{\mathrm{cost}}(t)$ &  Calendar cost at time $t$ & Cont. $\ge 0$ \\
+$\lambda_{t,i}$ &  SOS2 variable for calendar cost & Cont. $\ge 0$ \\
+$y_{\mathrm{ch}}(t), y_{\mathrm{dis}}(t)$ & DA bid binaries & Binary \\
+$y_{fcr}(b), y^{\mathrm{pos}}_{aFRR}(b), ...$ & Ancillary service bid binaries & Binary \\
+$y^{\mathrm{pos}}_{aFRR,E}(t), ...$ &  aFRR-E bid binaries & Binary \\
+$y^{\mathrm{total}}_{\mathrm{ch}}(t), y^{\mathrm{total}}_{\mathrm{dis}}(t)$ &  Total operation binaries & Binary \\
+$z^{\text{active}}_{j}(t)$ &  Segment activation binary (1 if segment $j$ has energy) & Binary \\
+\bottomrule
+\end{tabular}
+
+
+\section{Phase I Model - Base Model}
+
+\subsection*{Objective Function}
+
+The objective is to maximize the total net profit over the one-year horizon. This is the sum of day-ahead energy arbitrage revenue and ancillary service capacity payments (FCR + aFRR), minus the cost of energy purchased for charging.
+
+\begin{equation}
+\max \; Z = \mathbb{P}^{DA} + \mathbb{P}^{ANCI}  
+\end{equation}
+
+Where:
+\begin{equation}
+\mathbb{P}^{DA} = \sum_{t\in T} \Bigg( \frac{P_{DA}(t)}{1000}\, p_{\mathrm{dis}}(t) - \frac{P_{DA}(t)}{1000}\, p_{\mathrm{ch}}(t) \Bigg)\, \Delta t    
+\end{equation}
+
+\begin{equation}
+\mathbb{P}^{ANCI} = \sum_{b\in B} \Big( P_{FCR}(b)\, c_{fcr}(b) + P^{\mathrm{pos}}_{aFRR}(b)\, c^{\mathrm{pos}}_{aFRR}(b) + P^{\mathrm{neg}}_{aFRR}(b)\, c^{\mathrm{neg}}_{aFRR}(b) \Big)\, 
+\end{equation}
+
+\begin{itemize}
+  \item Where $T$ is the set of 15-minute intervals in 2024 (35,040 intervals); $B$ is the set of 4-hour blocks (6 blocks/day $\times$ 365 days = 2,190 blocks), and $t \in b$ denotes the set of 16 consecutive 15-minute intervals within block $b$.
+  \item The first term $\mathbb{P}^{DA}$ is day-ahead net profit.
+  \begin{itemize}
+    \item $p_{\mathrm{dis}}(t)$ and $p_{\mathrm{ch}}(t)$ are the nominal discharge and charge power (bids) at time $t$ (kW), respectively.
+    \item $P_{DA}(t)$ is the day-ahead market price at time $t$ (EUR/MWh).
+    \item $\Delta t$ is the time step duration (hours).
+  \end{itemize}
+  \item The second term $\mathbb{P}^{ANCI}$ is ancillary service capacity profit.
+  % \begin{itemize}
+    % \item Bids $c(b)$ are in MW and prices $P(b)$ are in EUR/MW/h (hourly rates). Multiplying by $\Delta b = 4$ hours yields EUR per block.
+  % \end{itemize}
+\end{itemize}
+
+\subsection*{Constraints}
+
+The optimization is subject to the following constraints.
+
+\subsubsection*{(Cst-0): Variable Domains}
+\begin{align}
+p_{\mathrm{ch}}(t) \ge 0,\quad p_{\mathrm{dis}}(t) \ge 0 && \forall t\in T \\
+c_{fcr}(b) \ge 0,\quad c^{\mathrm{pos}}_{aFRR}(b) \ge 0,\quad c^{\mathrm{neg}}_{aFRR}(b) \ge 0 && \forall b\in B \\
+y_{\mathrm{ch}}(t), y_{\mathrm{dis}}(t) \in \{0,1\} && \forall t\in T \\
+y_{fcr}(b), y^{\mathrm{pos}}_{aFRR}(b), y^{\mathrm{neg}}_{aFRR}(b) \in \{0,1\} && \forall b\in B
+\end{align}
+
+\subsubsection*{(Cst-1): Energy Balance (SOC Dynamics)}
+Update SOC based on charge/discharge actions considering efficiencies:
+\begin{equation}
+e_{\mathrm{soc}}(t) = e_{\mathrm{soc}}(t-1) + \Big( p_{\mathrm{ch}}(t)\,\eta_{\mathrm{ch}} - \frac{p_{\mathrm{dis}}(t)}{\eta_{\mathrm{dis}}} \Big)\, \Delta t
+    \qquad \forall t\in T    
+\end{equation}
+
+For $t=1$, use the initial SOC:
+\begin{equation}
+e_{\mathrm{soc}}(1) = e_{\mathrm{soc}}^{\mathrm{init}} + \Big( p_{\mathrm{ch}}(1)\,\eta_{\mathrm{ch}} - \frac{p_{\mathrm{dis}}(1)}{\eta_{\mathrm{dis}}} \Big)\, \Delta t 
+\end{equation}
+
+Where $e_{\mathrm{soc}}$ is the state of charge, and $\eta_{\mathrm{ch}}$ and $\eta_{\mathrm{dis}}$ are the charging and discharging efficiencies, respectively.
+
+\subsubsection*{(Cst-2): SOC Limits}
+BESS energy stays within min/max SOC bounds:
+\begin{equation}
+SOC_{\min}\,E_{\mathrm{nom}} \le e_{\mathrm{soc}}(t) \le SOC_{\max}\,E_{\mathrm{nom}} \qquad \forall t\in T
+\end{equation}
+
+Where $E_{\mathrm{nom}}$ is the nominal energy capacity of the BESS.
+
+\subsubsection*{(Cst-3): Simultaneous Operation Prevention}
+No charge and discharge at the same time:
+\begin{equation}
+    y_{\mathrm{ch}}(t) + y_{\mathrm{dis}}(t) \le 1 \qquad \forall t\in T
+\end{equation}
+
+\subsubsection*{(Cst-4): Market Co-optimization Power Limits}
+Set total power limits on both energy bids and reserved ancillary service capacities. The total committed power in either direction (charge or discharge) must not exceed the BESS power rating.
+
+\textbf{Total Discharge Power Limit:} The sum of any discharge bid in the DA market plus any reserved capacity for services that require discharging (FCR is symmetric, positive aFRR is discharge) must not exceed the maximum power rating.
+\begin{equation}
+    p_{\mathrm{dis}}(t) + 1000\,c_{fcr}(b) + 1000\,c^{\mathrm{pos}}_{aFRR}(b) \le P^{\mathrm{config}}_{\max} \qquad \forall b\in B,\, \forall t\in b
+\end{equation}
+
+\textbf{Total Charge Power Limit:} The sum of any charge bid in the DA market plus any reserved capacity for services that require charging (FCR is symmetric, negative aFRR is charge) must not exceed the maximum power rating.
+\begin{equation}
+    p_{\mathrm{ch}}(t) + 1000\,c_{fcr}(b) + 1000\,c^{\mathrm{neg}}_{aFRR}(b) \le P^{\mathrm{config}}_{\max} \qquad \forall b\in B,\, \forall t\in b
+\end{equation}
+
+Where we convert capacity bids (in MW) to kW by $\times 1000$.
+
+\subsubsection*{(Cst-5): Daily Cycle Limits}
+Limit the total daily discharged energy throughput from the battery. This is based on the energy drawn from the DC side, accounting for discharge inefficiency.
+\begin{equation}
+    \sum_{t\in d} \frac{p_{\mathrm{dis}}(t)}{\eta_{\mathrm{dis}}}\,\Delta t \;\le\; N_{\mathrm{cycles}}\,E_{\mathrm{nom}}
+    \qquad \forall d\in D
+\end{equation}
+
+\subsubsection*{(Cst-6): Ancillary Service Energy Reserve}
+Maintain sufficient energy reserve for ancillary service activation, accounting for BESS efficiency. The parameter $\tau$ represents the assumed worst-case continuous activation duration for reserves (typically set to $\Delta t = 0.25$ hours for this model).
+
+\textbf{To provide upward regulation (discharge):} The available energy in the BESS must cover the energy drawn from the DC side.
+\begin{equation}
+    \frac{\big(1000\,c_{fcr}(b) + 1000\,c^{\mathrm{pos}}_{aFRR}(b)\big)\,\tau}{\eta_{\mathrm{dis}}} \leq e_{\mathrm{soc}}(t) - SOC_{\min}\,E_{\mathrm{nom}}  
+    \qquad \forall b\in B,\, \forall t\in b
+\end{equation}
+
+\textbf{To provide downward regulation (charge):} The available headroom in the BESS must be able to store the energy delivered to the DC side.
+\begin{equation}
+    \big(1000\,c_{fcr}(b) + 1000\,c^{\mathrm{neg}}_{aFRR}(b)\big)\,\tau\,\eta_{\mathrm{ch}} \leq SOC_{\max}\,E_{\mathrm{nom}} - e_{\mathrm{soc}}(t)
+    \qquad \forall b\in B,\, \forall t\in b
+\end{equation}
+
+\subsubsection*{(Cst-7): Ancillary Service Market Mutual Exclusivity}
+Prevent simultaneous bidding in multiple markets for the same block:
+\begin{equation}
+    y_{fcr}(b) + y^{\mathrm{pos}}_{aFRR}(b) + y^{\mathrm{neg}}_{aFRR}(b) \le 1 \qquad \forall b\in B
+\end{equation}
+
+\subsubsection*{(Cst-8): Cross-Market Mutual Exclusivity}
+To ensure physical feasibility, the BESS cannot commit to charging in one market while simultaneously committing to discharging in another for the same time interval. The following constraints prevent such conflicting bids between the Day-Ahead market (15-min interval $t$) and ancillary service capacity markets (4-hour block $b$).
+
+\begin{itemize}
+  \item A Day-Ahead discharge bid ($y_{\mathrm{dis}}(t)=1$) is incompatible with reserving capacity for charging services (FCR or negative aFRR).
+  \item A Day-Ahead charge bid ($y_{\mathrm{ch}}(t)=1$) is incompatible with reserving capacity for discharging services (FCR or positive aFRR).
+\end{itemize}
+
+\begin{align}
+    y_{\mathrm{dis}}(t) + y_{fcr}(b) + y^{\mathrm{neg}}_{aFRR}(b) &\le 1 \qquad \forall b\in B,\, \forall t\in b \\
+    y_{\mathrm{ch}}(t) + y_{fcr}(b) + y^{\mathrm{pos}}_{aFRR}(b) &\le 1 \qquad \forall b\in B,\, \forall t\in b
+\end{align}
+
+\subsubsection*{(Cst-9): Minimum and Maximum Bid Sizes}
+Bids can be non-zero only if the corresponding binary is 1; if non-zero, they must also satisfy minimum size and available power. $P^{\mathrm{config}}_{\max}$ is the configured maximum power rating of the BESS (kW).
+
+\textbf{Day-Ahead Energy Bids:}
+\begin{align}
+    y_{\mathrm{ch}}(t)\,\text{MinBid}_{da} \cdot 1000 &\le p_{\mathrm{ch}}(t) \le y_{\mathrm{ch}}(t)\,P^{\mathrm{config}}_{\max} && \forall t\in T \\
+    y_{\mathrm{dis}}(t)\,\text{MinBid}_{da} \cdot 1000 &\le p_{\mathrm{dis}}(t) \le y_{\mathrm{dis}}(t)\,P^{\mathrm{config}}_{\max} && \forall t\in T
+\end{align}
+Notice $p(t)$ is in kW, while $\text{MinBid}_{da}$ is in MW.
+
+\textbf{FCR Capacity Bids:}
+\begin{equation}
+    y_{fcr}(b)\,\text{MinBid}_{fcr} \le c_{fcr}(b) \le y_{fcr}(b)\,\frac{P^{\mathrm{config}}_{\max}}{1000} \qquad \forall b\in B
+\end{equation}
+
+\textbf{aFRR Capacity Bids:}
+\begin{align}
+    y^{\mathrm{pos}}_{aFRR}(b)\,\text{MinBid}_{afrr} &\le c^{\mathrm{pos}}_{aFRR}(b) \le y^{\mathrm{pos}}_{aFRR}(b)\,\frac{P^{\mathrm{config}}_{\max}}{1000} && \forall b\in B \\
+    y^{\mathrm{neg}}_{aFRR}(b)\,\text{MinBid}_{afrr} &\le c^{\mathrm{neg}}_{aFRR}(b) \le y^{\mathrm{neg}}_{aFRR}(b)\,\frac{P^{\mathrm{config}}_{\max}}{1000} && \forall b\in B
+\end{align}
+
+\section{Phase II Model Derivation}
+We extend the Phase I MILP (Base Model) by incorporating the aFRR Energy Market (model (i)) and replacing the rigid daily cycle limit with a flexible degradation cost function (model (ii)). In addition, calendar aging costs are introduced in model (iii). The following subsections detail these modifications.
+% % Set a TODO box here, say writing the cyclic and calendar aging models as model (ii) and (iii) step by step
+% \begin{itemize}
+%     \item[√] \textbf{Model (i):} Base Model + aFRR Energy Market
+%     \item[X] \textbf{Model (ii):} Model (i) + Cyclic Aging Cost
+%     \item[X] \textbf{Model (iii):} Model (ii) + Calendar Aging Cost = Full Phase II Model  
+% \end{itemize}
+
+\subsection{Model (i): Base Model + aFRR Energy Market}
+The aFRR Energy market (15-min granularity) operates similarly to the DA market as a price-taker energy market. We introduce new variables for bidding in this market and update all constraints that manage power and energy.
+
+\begin{itemize}
+    \item \textbf{New Variables:} $p^{\mathrm{pos}}_{aFRR,E}(t)$ (discharge/positive) and $p^{\mathrm{neg}}_{aFRR,E}(t)$ (charge/negative) for energy bids in the aFRR energy market.
+    \item \textbf{New Binaries:} $y^{\mathrm{pos}}_{aFRR,E}(t)$ and $y^{\mathrm{neg}}_{aFRR,E}(t)$ to manage minimum bids.
+    \item \textbf{Objective Function:} A new profit term $\mathbb{P}^{aFRR\_E}$ is added:
+    \begin{equation}
+    \mathbb{P}^{aFRR\_E} = \sum_{t\in T} \left( \frac{P^{\mathrm{pos}}_{aFRR, E}(t)}{1000}\, p^{\mathrm{pos}}_{aFRR, E}(t) + \frac{P^{\mathrm{neg}}_{aFRR, E}(t)}{1000}\, p^{\mathrm{neg}}_{aFRR, E}(t) \right)\, \Delta t   
+    \end{equation}
+
+\end{itemize}
+
+This requires revising the core physical constraints to prevent conflicts. We define new \textbf{total} charge/discharge variables:
+
+\begin{align}
+p^{\mathrm{total}}_{\mathrm{ch}}(t) &= p_{\mathrm{ch}}(t) + p^{\mathrm{neg}}_{aFRR,E}(t) \quad \forall t \\
+p^{\mathrm{total}}_{\mathrm{dis}}(t) &= p_{\mathrm{dis}}(t) + p^{\mathrm{pos}}_{aFRR,E}(t) \quad \forall t 
+\end{align}
+
+These totals are then used to update the SOC, power, and mutual exclusivity constraints from Phase I.
+
+And the minimum/maximum bid constraints are updated to include the new aFRR-E bids:
+\begin{align}
+    y^{\mathrm{pos}}_{aFRR,E}(t)\,\text{MinBid}_{afrr\_e} \cdot 1000 &\le p^{\mathrm{pos}}_{aFRR,E}(t) \le y^{\mathrm{pos}}_{aFRR,E}(t)\,P^{\mathrm{config}}_{\max} & \forall t \\
+    y^{\mathrm{neg}}_{aFRR,E}(t)\,\text{MinBid}_{afrr\_e} \cdot 1000 &\le p^{\mathrm{neg}}_{aFRR,E}(t) \le y^{\mathrm{neg}}_{aFRR,E}(t)\,P^{\mathrm{config}}_{\max} & \forall t \\
+    y^{\mathrm{total}}_{\mathrm{ch}}(t) \ge y^{\mathrm{neg}}_{aFRR,E}(t); \quad & \quad y^{\mathrm{total}}_{\mathrm{dis}}(t) \ge y^{\mathrm{pos}}_{aFRR,E}(t) & \forall t
+\end{align}
+
+\subsection*{Integrating Battery Degradation as a Linear Cost}
+We replace the rigid Phase I constraint (Cst-5) $\sum p_{\mathrm{dis}} \le N_{\mathrm{cycles}} E_{\mathrm{nom}}$ with a flexible and more profitable \textbf{degradation cost function}, $C^{\mathrm{Degradation}}$. This cost is subtracted from the objective function, allowing the optimizer to find the best balance between high-revenue, high-degradation actions and low-revenue, low-degradation actions.
+
+Following the literature provided (Collath et al., 2023; Xu et al., 2017), we model this cost as the sum of calendar and cyclic aging:
+$$ C^{\mathrm{Degradation}} = C^{\mathrm{cal}} + C^{\mathrm{cyc}} $$
+
+
+\subsection{Model (ii): Model (i) + Cyclic Aging Cost}
+% TODO: Write additional cyclic aging cost modelling description here
+Based on the methodology from Xu et al. (2017), we model cyclic aging as a \textbf{convex piecewise-linear cost of discharge}. The battery's energy capacity $E_{\mathrm{nom}}$ is divided into $J$ segments (e.g., 10 segments of 10\% SOC). Discharging from a shallower segment (e.g., 90-100\% SOC) is "cheaper" than discharging from a deeper segment (e.g., 20-30\% SOC).
+\begin{itemize}
+    \item \textbf{New Variables:} $e_{\mathrm{soc},j}(t)$ (energy in segment $j$), $p^{\mathrm{ch}}_{j}(t)$ (charge to segment $j$), and $p^{\mathrm{dis}}_{j}(t)$ (discharge from segment $j$).
+    \item \textbf{Cost Function:} $C^{\mathrm{cyc}} = \sum_{t \in T} \sum_{j \in J} \left( c^{\mathrm{cost}}_{j} \cdot \frac{p^{\mathrm{dis}}_{j}(t)}{\eta_{\mathrm{dis}}} \cdot \Delta t \right)$
+    \item \textbf{Logic:} The marginal cost $c^{\mathrm{cost}}_{j}$ increases as $j$ increases (deeper discharge), e.g., $c_1 < c_2 < ... < c_J$. The optimizer will naturally prefer to discharge from the "cheapest" (shallowest) available segment first, perfectly modeling the non-linear cost of deep discharges in a linear framework.
+\end{itemize}
+
+Additionally, to enforce a strict 'Last-In, First-Out' (LIFO) behavior, a \textbf{fullness prerequisite constraint} is implemented using binary variables. This is a critical component that ensures the segments operate like a physical stack of tanks. The simple monotonic ordering ($e_{\mathrm{soc},j} \ge e_{\mathrm{soc},j+1}$) is insufficient as it allows segments to fill or empty simultaneously.
+
+The implemented constraint uses a binary variable $z^{\text{active}}_j(t) \in \{0,1\}$ to indicate whether segment $j$ is active (can hold energy). The constraint enforces that segment $j$ can only be active if segment $j-1$ is completely full:
+
+\begin{align}
+    e_{\mathrm{soc},j}(t) &\le E^{\mathrm{seg}}_{j} \cdot z^{\text{active}}_j(t) && \forall t, \forall j \label{eq:seg_activation} \\
+    e_{\mathrm{soc},j-1}(t) &\ge E^{\mathrm{seg}}_{j-1} \cdot z^{\text{active}}_j(t) && \forall t, \forall j \in \{2, ..., J\} \label{eq:lifo_fullness}
+\end{align}
+
+Equation \eqref{eq:seg_activation} links the binary variable to the segment's SOC: if $z^{\text{active}}_j = 0$, then $e_{\mathrm{soc},j} = 0$.
+Equation \eqref{eq:lifo_fullness} is the core LIFO constraint: if segment $j$ is active ($z^{\text{active}}_j = 1$), then segment $j-1$ must be exactly full ($e_{\mathrm{soc},j-1} \ge E^{\mathrm{seg}}_{j-1}$).
+
+This effectively creates the cascading behavior where segment $j$ begins to fill only after $j-1$ is full, and segment $j-1$ begins to empty only after $j$ is empty. This is crucial for the accuracy of the cyclic degradation cost, which depends on which segment is being cycled.
+
+\subsubsection{Calculation of the the Marginal Cost for Each SOC Segment $c^{\mathrm{cost}}_{j}$}
+The marginal cost for discharging from each SOC segment is derived from the BESS's total investment cost and its expected lifetime. To ensure the model is physically-grounded and traceable, the parameters have been re-evaluated based on LFP-specific data and the competition's economic specifications. The cost is distributed non-linearly based on a standard power-law model for LFP battery degradation.
+(Details refer to \texttt{doc/p2\_model/aging\_cost/cyclic\_aging.tex})
+
+\paragraph{Step 1: Re-evaluating the Cycle Life Parameter ($a$)}
+The relationship between cycle life and Depth of Discharge (DoD) is described by the power-law model $\text{CycleLife}(D) = a \cdot D^{-b}$, where $b=2$ is a behaviorally superior choice for an EMS as it strongly penalizes deep discharges. The parameter $a$ (cycle life at 100\% DoD) is derived from the LFP-specific commercial claim of 6,000 cycles at 80\% DoD:
+\begin{equation*}
+    a = \text{CycleLife}(0.8) \times (0.8)^{-b} = 6000 \times (0.8)^{-2} = 3840 \text{ cycles}
+\end{equation*}
+This provides a traceable, LFP-specific value for the cycle life at 100\% DoD.
+
+\paragraph{Step 2: Recalculating the Cost per Full Cycle}
+The total BESS investment is $4472 \text{ kWh} \times 200 \text{ EUR/kWh} = 894,400 \text{ EUR}$. Amortizing this over the re-evaluated lifetime gives the new cost per full (100\% DoD) cycle:
+\begin{equation*}
+    \text{Cost per Full Cycle} = \frac{894,400 \text{ EUR}}{3840 \text{ cycles}} \approx 232.92 \text{ EUR/Cycle}
+\end{equation*}
+
+\paragraph{Step 3: Calculate Final Marginal Costs}
+The marginal aging weights $w_j$ for each of the 10 segments are derived from the power-law model ($w_j \propto D_j^2 - D_{j-1}^2$) and are self-normalizing. The marginal cost for discharging 1 kWh from segment $j$ is then:
+\begin{equation*}
+c^{\mathrm{cost}}_{j} = \frac{\text{Cost per Full Cycle} \times w_j}{E_{\mathrm{nom}} \times \text{Segment Size}}
+\end{equation*}
+For example, for the first and shallowest segment ($j=1$), the marginal cost is:
+\begin{equation*}
+c^{\mathrm{cost}}_{1} = \frac{232.92 \text{ EUR/Cycle} \times 0.01}{4472 \text{ kWh} \times 0.1} \approx 0.0052 \text{ EUR/kWh}
+\end{equation*}
+The resulting costs for all segments are detailed in Table \ref{tab:marginal_costs}.
+
+\begin{table}[h!]
+\centering
+\caption{Re-parameterized Marginal Cyclic Aging Costs ($c^{\mathrm{cost}}_{j}$) for LFP}
+\label{tab:marginal_costs}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+\textbf{Segment ($j$)} & \textbf{SOC Range} & \textbf{Multiplier ($w_j$)} & \textbf{Marginal Cost ($c^{\mathrm{cost}}_{j}$) [EUR/kWh]} \\ \midrule
+1 & 90-100\% & 0.01 & 0.0052 \\
+2 & 80-90\% & 0.03 & 0.0156 \\
+3 & 70-80\% & 0.05 & 0.0260 \\
+4 & 60-70\% & 0.07 & 0.0364 \\
+5 & 50-60\% & 0.09 & 0.0469 \\
+6 & 40-50\% & 0.11 & 0.0573 \\
+7 & 30-40\% & 0.13 & 0.0677 \\
+8 & 20-30\% & 0.15 & 0.0781 \\
+9 & 10-20\% & 0.17 & 0.0885 \\
+10 & 0-10\% & 0.19 & 0.0990 \\ \bottomrule
+\end{tabular}
+\end{table}
+\textit{This approach ensures that the sum of costs incurred by discharging all 10 segments equals exactly one "Cost per Full Cycle" (€232.92), making the model economically consistent and physically traceable.}
+
+\subsubsection{Alternative Parameterization: 6-Segment Model for Computational Efficiency}
+For large-scale MPC simulations where computational speed is critical, a 6-segment model provides a balance between degradation cost accuracy and solver performance. Using the same power-law methodology ($b=2$, $a=3840$ cycles), we recalculate the marginal costs for 6 equally-sized segments.
+
+\paragraph{Segment Structure}
+Each segment: $E^{\mathrm{seg}} = 4472 \text{ kWh} \div 6 = 745.33 \text{ kWh}$ (16.67\% DOD per segment)
+
+\paragraph{Marginal Weight Calculation}
+Using the power-law formula $w_j \propto D_j^2 - D_{j-1}^2$:
+\begin{align*}
+w_1 &= (0.1667)^2 - (0)^2 = 0.0278 \\
+w_2 &= (0.3333)^2 - (0.1667)^2 = 0.0833 \\
+w_3 &= (0.5000)^2 - (0.3333)^2 = 0.1389 \\
+w_4 &= (0.6667)^2 - (0.5000)^2 = 0.1945 \\
+w_5 &= (0.8333)^2 - (0.6667)^2 = 0.2501 \\
+w_6 &= (1.0000)^2 - (0.8333)^2 = 0.3055
+\end{align*}
+Sum: $\sum w_j = 1.0001 \approx 1.0$ (normalized) ✓
+
+\paragraph{Marginal Cost Calculation}
+Using the formula $c^{\mathrm{cost}}_{j} = \frac{232.92 \text{ EUR/Cycle} \times w_j}{4472 \text{ kWh} \times 0.1667}$:
+
+\begin{table}[h!]
+\centering
+\caption{6-Segment Marginal Cyclic Aging Costs (Computational Efficiency Configuration)}
+\label{tab:marginal_costs_6seg}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+\textbf{Segment ($j$)} & \textbf{SOC Range} & \textbf{Multiplier ($w_j$)} & \textbf{Marginal Cost ($c^{\mathrm{cost}}_{j}$) [EUR/kWh]} \\ \midrule
+1 & 83.33-100\% & 0.0278 & 0.0087 \\
+2 & 66.67-83.33\% & 0.0833 & 0.0260 \\
+3 & 50-66.67\% & 0.1389 & 0.0434 \\
+4 & 33.33-50\% & 0.1945 & 0.0608 \\
+5 & 16.67-33.33\% & 0.2501 & 0.0782 \\
+6 & 0-16.67\% & 0.3055 & 0.0955 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\textit{Verification:} $6 \times 745.33 \text{ kWh} \times \frac{0.0087+0.0260+0.0434+0.0608+0.0782+0.0955}{6} = 232.95 \text{ EUR} \approx 232.92 \text{ EUR}$ ✓
+
+\paragraph{Computational Impact}
+The 6-segment model reduces the number of binary variables by 40\% compared to the 10-segment baseline:
+\begin{itemize}
+    \item Binary variables per timestep: 12 (vs. 20 for 10 segments)
+    \item For a 24-hour MPC horizon (96 timesteps): 1,152 binaries (vs. 1,920)
+    \item Expected solve time improvement: 2-3× faster
+    \item Degradation cost accuracy: Within 5-10\% of 10-segment model
+\end{itemize}
+
+This configuration is recommended for full-year MPC simulations where computational feasibility is prioritized while maintaining reasonable degradation modeling fidelity.
+
+
+\subsection{Solving the "aFRR Energy Trap": An Expected Value Approach}
+\label{sec:afrr_trap_solution}
+A key challenge in modeling the aFRR energy market is the significant uncertainty in activation. Historical data reveals that while aFRR energy prices are often higher than day-ahead (DA) prices, the probability of activation is low. For instance, the historical data indicates a high percentage of non-activation for positive aFRR energy bids.
+
+A deterministic optimization model, as formulated thus far, would naively interpret high aFRR energy prices as a guaranteed revenue opportunity, leading it to commit maximum available power to this market. This gives rise to the "aFRR Energy Trap," which has two primary consequences:
+\begin{enumerate}
+    \item \textbf{Profit Overestimation:} The model would calculate profits assuming 100\% activation, leading to a significant overstatement of true earnings, as many bids would not be called and would yield zero revenue.
+    \item \textbf{Inaccurate Degradation Modeling:} The model would incorrectly calculate battery degradation based on the assumption of full activation, while in reality, no physical cycling would occur for non-activated bids.
+\end{enumerate}
+To address this, we incorporate activation uncertainty directly into the deterministic framework using an \textbf{Expected Value (EV) model}. This approach avoids the computational complexity of stochastic or robust optimization methods while effectively mitigating the "aFRR trap."
+
+The EV model introduces a set of time-dependent parameters, denoted as $w^{\mathrm{pos}}_t$ and $w^{\mathrm{neg}}_t$, which represent the historical probability of activation for positive and negative aFRR energy bids at each interval $t$. These are derived from historical data on non-activation rates, $\pi^{\mathrm{pos}}_t$ and $\pi^{\mathrm{neg}}_t$:
+\begin{align}
+    w^{\mathrm{pos}}_t &= 1 - \pi^{\mathrm{pos}}_t \\
+    w^{\mathrm{neg}}_t &= 1 - \pi^{\mathrm{neg}}_t
+\end{align}
+By weighting the aFRR energy market bids with these probabilities, the model can make a more rational economic decision. For example, a high-priced aFRR bid with a low activation probability may be correctly evaluated as less profitable than a lower-priced but certain DA market bid. This modification is implemented through a minor adjustments to the objective function. The power bid variables, $p^{\mathrm{pos}}_{aFRR,E}(t)$ and $p^{\mathrm{neg}}_{aFRR,E}(t)$, are multiplied by their respective activation probabilities, $w^{\mathrm{pos}}_t$ and $w^{\mathrm{neg}}_t$:
+\begin{equation}
+\mathbb{P}^{aFRR\_E} = \sum_{t\in T} \left( \frac{P^{\mathrm{pos}}_{aFRR, E}(t)}{1000}\, (p^{\mathrm{pos}}_{aFRR, E}(t) \cdot w_t^{\mathrm{pos}}) + \frac{P^{\mathrm{neg}}_{aFRR, E}(t)}{1000}\, (p^{\mathrm{neg}}_{aFRR, E}(t) \cdot w_t^{\mathrm{neg}}) \right)\, \Delta t
+\end{equation}
+
+
+
+\subsection{Model (iii): Model (ii) + Calendar Aging Cost}
+Based on Collath et al. (2023), calendar aging is a non-linear function of the average State of Charge (SOC). We linearize this cost using Special Ordered Sets of Type 2 (SOS2), a standard MILP technique.
+\begin{itemize}
+    \item \textbf{New Variables:} $\lambda_{t,i}$ (weighting variables for linearization).
+    \item \textbf{Cost Function:} $C^{\mathrm{cal}} = \sum_{t \in T} c^{\mathrm{cal}}_{\mathrm{cost}}(t)$
+    \item \textbf{Logic:} The total SOC $e_{\mathrm{soc}}(t)$ and its corresponding cost $c^{\mathrm{cal}}_{\mathrm{cost}}(t)$ are expressed as a convex combination of $I$ pre-calculated (SOC, Cost) breakpoints from the literature's non-linear curve.
+    $$ e_{\mathrm{soc}}(t) = \sum_{i \in I} \lambda_{t,i} \cdot SOC^{\mathrm{point}}_i \quad | \quad c^{\mathrm{cal}}_{\mathrm{cost}}(t) = \sum_{i \in I} \lambda_{t,i} \cdot Cost^{\mathrm{point}}_i $$
+    $$ \sum_{i \in I} \lambda_{t,i} = 1 \quad | \quad \{\lambda_{t,i}\} \text{ are SOS2 variables} $$
+\end{itemize}
+This formulation directly penalizes holding the battery at high SOC, as prioritized in the project description. 
+
+
+\subsubsection{Calculation of the Calendar Aging Breakpoints}
+The breakpoints for the SOS2 linearization are derived from the "scaled" model presented in Collath et al. (2023), specifically from Figure 3. This approach uses a fixed linearization point (representing a mid-life aging state) for the entire BESS lifetime to better optimize for Net Present Value (NPV). The costs are monetized using the project's BESS investment cost.
+
+\paragraph{Step 1: Extract Physical Degradation Data}
+We extract data from the linearized calendar degradation model in Collath et al. (2023, Fig. 3), using the "scaled" curve for a past calendar capacity loss of $Q_{\mathrm{loss,cal}} = 5\%$. This provides the physical relationship between SOC and the rate of capacity loss. We select five key breakpoints:
+
+\begin{itemize}
+    \item SOC 0\%: $\approx 0.00005\%$ capacity loss per 15 min
+    \item SOC 25\%: $\approx 0.00006\%$ capacity loss per 15 min
+    \item SOC 50\%: $\approx 0.00010\%$ capacity loss per 15 min
+    \item SOC 75\%: $\approx 0.00018\%$ capacity loss per 15 min
+    \item SOC 100\%: $\approx 0.00030\%$ capacity loss per 15 min
+\end{itemize}
+
+\paragraph{Step 2: Monetize the Degradation Cost}
+The physical capacity loss is converted into an hourly economic cost. The total BESS investment is $4472 \text{ kWh} \times 200 \text{ EUR/kWh} = 894,400 \text{ EUR}$. The hourly cost at each breakpoint is calculated by converting the 15-minute loss rate to an hourly rate.
+\begin{equation*}
+    \text{Hourly Cost} = \text{Total Investment} \times (\text{15-min Loss Rate} \times 4)
+\end{equation*}
+For example, for the 100\% SOC breakpoint:
+\begin{equation*}
+    \text{Cost}_{100\%} = 894,400 \text{ EUR} \times (0.00030\% \times 4) \approx 10.73 \text{ EUR/hr}
+\end{equation*}
+
+\paragraph{Step 3: Define Final Breakpoint Parameters}
+The calculated (SOC, Cost) pairs form the breakpoints for the SOS2 constraints. These values provide the concrete parameters for the model, ensuring it accurately penalizes holding the battery at high states of charge. The resulting parameters are detailed in Table \ref{tab_calendar_costs}.
+
+\begin{table}[h!]
+\centering
+\caption{Calculation of Calendar Aging Breakpoints ($SOC^{\mathrm{point}}_i, Cost^{\mathrm{point}}_i$)}
+\label{tab_calendar_costs}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+\textbf{Breakpoint ($i$)} & \textbf{SOC Level} & \textbf{SOC ($SOC_i^{\mathrm{point}}$) [kWh]} & \textbf{Cost ($Cost_i^{\mathrm{point}}$) [EUR/hr]} \\ \midrule
+1 & 0\% & 0 & 1.79 \\
+2 & 25\% & 1118 & 2.15 \\
+3 & 50\% & 2236 & 3.58 \\
+4 & 75\% & 3354 & 6.44 \\
+5 & 100\% & 4472 & 10.73 \\ \bottomrule
+\end{tabular}
+\end{table}
+\textit{These values provide the concrete parameters for the SOS2 constraints, ensuring the model accurately penalizes holding the battery at high states of charge.}
+
+\section{Phase II - Model (iii) Mathematical Formulation}
+
+
+\subsection{Objective Function}
+The objective is to maximize the total profit, defined as market revenues minus degradation costs.
+\begin{equation}
+\max \; Z = \mathbb{P}^{DA} + \mathbb{P}^{ANCI} + \mathbb{P}^{aFRR\_E} - \alpha \cdot (C^{\mathrm{cyc}} + C^{\mathrm{cal}})
+\end{equation}
+Where:
+\begin{align}
+\mathbb{P}^{DA} &= \sum_{t\in T} \left( \frac{P_{DA}(t)}{1000}\, p_{\mathrm{dis}}(t) - \frac{P_{DA}(t)}{1000}\, p_{\mathrm{ch}}(t) \right)\, \Delta t \\
+\mathbb{P}^{ANCI} &= \sum_{b\in B} \Big( P_{FCR}(b)\, c_{fcr}(b) + P^{\mathrm{pos}}_{aFRR}(b)\, c^{\mathrm{pos}}_{aFRR}(b) + P^{\mathrm{neg}}_{aFRR}(b)\, c^{\mathrm{neg}}_{aFRR}(b) \Big)\, \\
+\mathbb{P}^{aFRR\_E} &= \sum_{t\in T} \left( \frac{P^{\mathrm{pos}}_{aFRR, E}(t)}{1000}\, (p^{\mathrm{pos}}_{aFRR, E}(t) \cdot w_t^{\mathrm{pos}}) + \frac{P^{\mathrm{neg}}_{aFRR, E}(t)}{1000}\, (p^{\mathrm{neg}}_{aFRR, E}(t) \cdot w_t^{\mathrm{neg}}) \right)\, \Delta t \\
+C^{\mathrm{cyc}} &= \sum_{t \in T} \sum_{j \in J} \left( c^{\mathrm{cost}}_{j} \cdot \frac{p^{\mathrm{dis}}_{j}(t)}{\eta_{\mathrm{dis}}} \cdot \Delta t \right) \\
+C^{\mathrm{cal}} &= \sum_{t \in T} c^{\mathrm{cal}}_{\mathrm{cost}}(t) \cdot \Delta t
+\end{align}
+
+\subsection{Constraints}
+
+\subsubsection{Degradation-Aware SOC Dynamics (Replaces Cst-1)}
+The single SOC variable is replaced by segment-level variables. The total power and energy are now aggregations of their segment-level counterparts, enforced via explicit equality constraints.
+\begin{align}
+e_{\mathrm{soc},j}(t) &= e_{\mathrm{soc},j}(t-1) + \left( p^{\mathrm{ch}}_{j}(t) \eta_{\mathrm{ch}} - \frac{p^{\mathrm{dis}}_{j}(t)}{\eta_{\mathrm{dis}}} \right) \Delta t & \forall t, \forall j \label{eq:seg_soc_balance}\\
+e_{\mathrm{soc}}(t) &= \sum_{j \in J} e_{\mathrm{soc},j}(t) & \forall t \label{eq:total_soc_agg}\\
+p^{\mathrm{total}}_{\mathrm{ch}}(t) &= \sum_{j \in J} p^{\mathrm{ch}}_{j}(t) & \forall t \label{eq:total_ch_agg_seg}\\
+p^{\mathrm{total}}_{\mathrm{dis}}(t) &= \sum_{j \in J} p^{\mathrm{dis}}_{j}(t) & \forall t \label{eq:total_dis_agg_seg}\\
+p^{\mathrm{total}}_{\mathrm{ch}}(t) &= p_{\mathrm{ch}}(t) + p^{\mathrm{neg}}_{aFRR,E}(t) & \forall t \label{eq:total_ch_agg_market}\\
+p^{\mathrm{total}}_{\mathrm{dis}}(t) &= p_{\mathrm{dis}}(t) + p^{\mathrm{pos}}_{aFRR,E}(t) & \forall t \label{eq:total_dis_agg_market}
+\end{align}
+
+\subsubsection{SOC \& Segment Limits (Replaces Cst-2)}
+\begin{align}
+SOC_{\min}\,E_{\mathrm{nom}} &\le e_{\mathrm{soc}}(t) \le SOC_{\max}\,E_{\mathrm{nom}} & \forall t \\
+0 &\le e_{\mathrm{soc},j}(t) \le E^{\mathrm{seg}}_{j} & \forall t, \forall j \\
+e_{\mathrm{soc},j}(t) &\ge e_{\mathrm{soc},j+1}(t) & \forall t, \forall j \in \{1, ..., J-1\}
+\end{align}
+
+\subsubsection{Simultaneous Operation Prevention (Replaces Cst-3)}
+\begin{align}
+p^{\mathrm{total}}_{\mathrm{ch}}(t) &\le y^{\mathrm{total}}_{\mathrm{ch}}(t) \cdot P^{\mathrm{config}}_{\max} & \forall t \\
+p^{\mathrm{total}}_{\mathrm{dis}}(t) &\le y^{\mathrm{total}}_{\mathrm{dis}}(t) \cdot P^{\mathrm{config}}_{\max} & \forall t \\
+y^{\mathrm{total}}_{\mathrm{ch}}(t) + y^{\mathrm{total}}_{\mathrm{dis}}(t) &\le 1 & \forall t
+\end{align}
+
+\subsubsection{Market Co-optimization Power Limits (Replaces Cst-4)}
+\begin{align}
+p^{\mathrm{total}}_{\mathrm{dis}}(t) + 1000\,c_{fcr}(b) + 1000\,c^{\mathrm{pos}}_{aFRR}(b) &\le P^{\mathrm{config}}_{\max} & \forall b, t \in b \\
+p^{\mathrm{total}}_{\mathrm{ch}}(t) + 1000\,c_{fcr}(b) + 1000\,c^{\mathrm{neg}}_{aFRR}(b) &\le P^{\mathrm{config}}_{\max} & \forall b, t \in b
+\end{align}
+
+\subsubsection{Ancillary Service Energy Reserve (Keeps Cst-6 Logic)}
+\begin{align}
+    \frac{\big(1000\,c_{fcr}(b) + 1000\,c^{\mathrm{pos}}_{aFRR}(b)\big)\,\tau}{\eta_{\mathrm{dis}}} &\leq e_{\mathrm{soc}}(t) - SOC_{\min}\,E_{\mathrm{nom}} & \forall b, t \in b \\
+    \big(1000\,c_{fcr}(b) + 1000\,c^{\mathrm{neg}}_{aFRR}(b)\big)\,\tau\,\eta_{\mathrm{ch}} &\leq SOC_{\max}\,E_{\mathrm{nom}} - e_{\mathrm{soc}}(t) & \forall b, t \in b
+\end{align}
+\textit{(Where $\tau$ is the reserve duration, e.g., 0.25h)}
+
+\subsubsection{Ancillary Capacity Market Exclusivity (Keeps Cst-7)}
+\begin{equation}
+    y_{fcr}(b) + y^{\mathrm{pos}}_{aFRR}(b) + y^{\mathrm{neg}}_{aFRR}(b) \le 1 \qquad \forall b
+\end{equation}
+
+\subsubsection{Cross-Market Mutual Exclusivity (Replaces Cst-8)}
+\begin{align}
+    y^{\mathrm{total}}_{\mathrm{ch}}(t) + y_{fcr}(b) + y^{\mathrm{pos}}_{aFRR}(b) &\le 1 & \forall b, t \in b \\
+    y^{\mathrm{total}}_{\mathrm{dis}}(t) + y_{fcr}(b) + y^{\mathrm{neg}}_{aFRR}(b) &\le 1 & \forall b, t \in b
+\end{align}
+
+\subsubsection{Minimum Bids \& Binary Logic (Updates Cst-9)}
+\begin{align}
+    y_{\mathrm{ch}}(t)\,\text{MinBid}_{da} \cdot 1000 &\le p_{\mathrm{ch}}(t) \le y_{\mathrm{ch}}(t)\,P^{\mathrm{config}}_{\max} & \forall t \\
+    y_{\mathrm{dis}}(t)\,\text{MinBid}_{da} \cdot 1000 &\le p_{\mathrm{dis}}(t) \le y_{\mathrm{dis}}(t)\,P^{\mathrm{config}}_{\max} & \forall t \\
+    y^{\mathrm{pos}}_{aFRR,E}(t)\,\text{MinBid}_{afrr\_e} \cdot 1000 &\le p^{\mathrm{pos}}_{aFRR,E}(t) \le y^{\mathrm{pos}}_{aFRR,E}(t)\,P^{\mathrm{config}}_{\max} & \forall t \\
+    y^{\mathrm{neg}}_{aFRR,E}(t)\,\text{MinBid}_{afrr\_e} \cdot 1000 &\le p^{\mathrm{neg}}_{aFRR,E}(t) \le y^{\mathrm{neg}}_{aFRR,E}(t)\,P^{\mathrm{config}}_{\max} & \forall t \\
+    y^{\mathrm{total}}_{\mathrm{ch}}(t) &\ge y_{\mathrm{ch}}(t); \quad y^{\mathrm{total}}_{\mathrm{ch}}(t) \ge y^{\mathrm{neg}}_{aFRR,E}(t) & \forall t \\
+    y^{\mathrm{total}}_{\mathrm{dis}}(t) &\ge y_{\mathrm{dis}}(t); \quad y^{\mathrm{total}}_{\mathrm{dis}}(t) \ge y^{\mathrm{pos}}_{aFRR,E}(t) & \forall t
+\end{align}
+\textit{(Similar min/max bid constraints for $c_{fcr}$, $c^{\mathrm{pos}}_{aFRR}$, $c^{\mathrm{neg}}_{aFRR}$ remain from Phase I)}
+
+\subsubsection{Calendar Aging PWL Constraints (New, Cst-10)}
+\begin{align}
+    e_{\mathrm{soc}}(t) &= \sum_{i \in I} \lambda_{t,i} \cdot SOC^{\mathrm{point}}_i & \forall t \\
+    c^{\mathrm{cal}}_{\mathrm{cost}}(t) &= \sum_{i \in I} \lambda_{t,i} \cdot Cost^{\mathrm{point}}_i & \forall t \\
+    \sum_{i \in I} \lambda_{t,i} &= 1 & \forall t \\
+    \{\lambda_{t,i}\}_{i \in I} &\text{ are SOS2 variables} & \forall t
+\end{align}
+
+\subsubsection{Total Ancillary Service Capacity Limit (New)}
+\textit{(New constraint based on optimizer.py Cst-11)}
+To prevent the model from reserving 100\% of its power rating for ancillary services (which would block all energy market arbitrage), a cap is introduced. This constraint ensures that the total reserved capacity in any block $b$ does not exceed a ratio $\rho_{as\_max}$ (e.g., 0.8 for 80\%) of the BESS's power rating.
+\begin{align}
+    c_{fcr}(b) + c^{\mathrm{pos}}_{aFRR}(b) + c^{\mathrm{neg}}_{aFRR}(b) \le \rho_{as\_max} \cdot \frac{P^{\mathrm{config}}_{\max}}{1000} \qquad \forall b \in B
+\end{align}
+
+
+\subsection{Implemented LIFO Logic: Binary Segment Activation}
+To guarantee strict LIFO behavior and prevent solver numerical issues with the purely economic-driven model, a set of binary activation constraints are implemented. This approach is more robust than relying solely on cost incentives. It explicitly controls which segment is active for charging or discharging.
+
+\subsubsection{Binary Variables for Segment Activation}
+\begin{tabular}{@{}lll}
+\toprule
+Symbol & Description & Type \\
+\midrule
+$z^{\text{active}}_{j}(t)$ & 1 if segment $j$ is active (can hold energy) at time $t$ & Binary \\
+\bottomrule
+\end{tabular}
+
+\subsubsection{Core LIFO Constraints}
+
+\paragraph{1. Segment Activation and SOC}
+This constraint links the binary variable to the segment's state of charge. If a segment $j$ has any energy, its corresponding binary $z^{\text{active}}_{j}(t)$ must be 1.
+\begin{equation}\label{eq:seg_activation_impl}
+    e_{\mathrm{soc},j}(t) \le E^{\mathrm{seg}}_{j} \cdot z^{\text{active}}_{j}(t) \qquad \forall t, \forall j 
+\end{equation}
+
+\paragraph{2. LIFO Fullness Prerequisite}
+The core of the LIFO logic. It enforces that a segment $j$ can only hold energy if the segment above it, $j-1$, is completely full.
+\begin{equation}
+    e_{\mathrm{soc},j-1}(t) \ge E^{\mathrm{seg}}_{j-1} \cdot z^{\text{active}}_{j}(t) \qquad \forall t, \forall j \in \{2, ..., J\} \label{eq:lifo_fullness_impl}
+\end{equation}
+This constraint links the activation of segment $j$ to the fullness of segment $j-1$. Combined with Equation \eqref{eq:seg_activation_impl}, this ensures proper LIFO stacking behavior.
+
+\subsubsection{Optional Power Flow Constraints (Performance Tuning)}
+
+The following constraints can be optionally enabled via the \texttt{require\_sequential\_segment\_activation} parameter in \texttt{aging\_config.json}. They provide stricter enforcement but add $2 \times T \times J$ constraints, which can slow solve time by 5-10x. In practice, Equations \eqref{eq:seg_activation_impl} and \eqref{eq:lifo_fullness_impl} are sufficient to enforce LIFO behavior.
+
+\paragraph{3. Segment Charge/Discharge Activation (Optional)}
+These constraints ensure that power can only flow into or out of a segment if it is active:
+\begin{align}
+    p^{\mathrm{ch}}_{j}(t) &\le P^{\mathrm{config}}_{\max} \cdot z^{\text{active}}_{j}(t) \qquad \forall t, \forall j \label{eq:seg_ch_act}\\
+    p^{\mathrm{dis}}_{j}(t) &\le P^{\mathrm{config}}_{\max} \cdot z^{\text{active}}_{j}(t) \qquad \forall t, \forall j \label{eq:seg_dis_act}
+\end{align}
+
+\textbf{Implementation Note:} Set \texttt{require\_sequential\_segment\_activation = False} in \texttt{aging\_config.json} (default: True) to disable Equations \eqref{eq:seg_ch_act} and \eqref{eq:seg_dis_act} for faster solve times. When disabled, LIFO behavior is maintained solely through Equations \eqref{eq:seg_activation_impl} and \eqref{eq:lifo_fullness_impl}, which is sufficient in practice.
+
+
+
+
+\section{Implementation Strategy: Meta-Optimization \& Rolling Horizon}
+The mathematical formulation above defines the "inner-loop" optimization. However, two external challenges must be solved to meet the competition's goals: \textbf{(1)} computational infeasibility of a full-year MILP solve, and \textbf{(2)} the need to select the "correct" trade-off between profit and degradation.
+
+We address both with a "meta-optimization" strategy, which defines *how* we use the MILP model.
+
+\subsection{Addressing Computational Feasibility: Rolling Horizon (MPC)}
+The full-year model (T=35,040) is computationally intractable for open-source solvers. We will implement a \textbf{Rolling Horizon (or Model Predictive Control, MPC)} approach, as demonstrated in the literature (Collath et al., 2023).
+
+The implementation will be a simulation loop:
+\begin{enumerate}
+    \item \textbf{Initialize:} Set $t=1$, $e_{\mathrm{soc},j}(0) = e^{\mathrm{init}}_{\mathrm{soc},j}$.
+    \item \textbf{Loop (for $d = 1$ to 365):}
+    \begin{itemize}
+        \item \textbf{Solve:} Run the MILP defined in Section 3 for a short horizon, $T_{horizon}$ (e.g., 24-48 hours), starting from the current SOC $e_{\mathrm{soc},j}(t-1)$.
+        \item \textbf{Execute:} Record the optimal bids and actions $p(t), c(b)$ for the first "execution" block (e.g., first 1 or 4 hours).
+        \item \textbf{Update:} Calculate the new $e_{\mathrm{soc},j}$ at the end of the execution block. Set $t$ to the next time step.
+    \end{itemize}
+    \item \textbf{Aggregate:} Sum the profits and degradation from all 365 solves to get the total annual result.
+\end{enumerate}
+This makes the problem computationally feasible.
+
+\subsection{Addressing the Bi-Objective Problem: The $\alpha$ Meta-Parameter}
+The competition requires balancing two objectives: Revenue (30\% weight) and Degradation (30\% weight). Our objective function, $\max \; \mathbb{P} - \alpha \cdot C^{\mathrm{Degradation}}$, is a standard \textbf{Weighted Sum} method for solving this bi-objective problem.
+
+The parameter $\alpha$ (the "degradation price") is the tuning knob that traces the Pareto frontier.
+\begin{itemize}
+    \item If $\alpha=0$, we only maximize profit (short life, high revenue).
+    \item If $\alpha \to \infty$, we only minimize degradation (long life, low revenue).
+\end{itemize}
+The "correct" $\alpha$ is the one that results in the highest 10-Year ROI, as required by the "Investment Optimization" task. We will find this optimal $\alpha$ using a \textbf{meta-optimization loop} (a simple parameter sweep).
+
+\subsubsection{Meta-Optimization Algorithm:}
+\begin{enumerate}
+    \item \textbf{Outer-Loop (Parameter Sweep):} For $\alpha$ in [0.1, 0.2, 0.3, ..., 3.0]:
+    \begin{itemize}
+        \item \textbf{Inner-Loop (Simulation):} Run the full 365-day \textbf{Rolling Horizon (MPC)} simulation using this value of $\alpha$.
+        \item \textbf{Record:} Store the resulting total annual profit $\mathbb{P}(\alpha)$ and total annual SOH loss $\Delta SOH(\alpha)$.
+        \item \textbf{Project:} Calculate the 10-Year ROI for this $\alpha$, factoring in the SOH loss (which determines battery replacement, if any).
+    \end{itemize}
+    \item \textbf{Select:} Choose the $\alpha^*$ that produced the \textbf{maximum 10-Year ROI}.
+    \item \textbf{Final Run:} Run the simulation one last time with $\alpha^*$ to generate the final bidding files.
+\end{enumerate}
+This meta-optimization strategy directly links our MILP model to the competition's final evaluation criteria (10-year ROI) and correctly implements the bi-objective optimization you identified.
+
+
+\section{Conclusion and Next Steps}
+This Phase II formulation successfully integrates the aFRR energy market and a sophisticated, linearized degradation cost model into the Phase I MILP. The implementation strategy (MPC) ensures computational feasibility, while the meta-optimization of $\alpha$ ensures we find the optimal balance between profit and degradation to maximize the 10-year ROI.
+
+\begin{itemize}
+    \item Can use stochastic model to address the uncertain activation of aFRR and Capacity markets in future work, even together with weather data to categorize scenarios with machine learning for the activation probability prediction.
+\end{itemize}
+
+
+\begin{thebibliography}{9}
+\bibitem{xu2017}
+B. Xu, J. Zhao, T. Zheng, E. Litvinov, and D. S. Kirschen. (2017). "Factoring the Cycle Aging Cost of Batteries Participating in Electricity Markets." \textit{arXiv:1707.04567v2}.
+
+\bibitem{collath2023}
+N. Collath, M. Cornejo, V. Engwerth, H. Hesse, and A. Jossen. (2023). "Increasing the lifetime profitability of battery energy storage systems through aging aware operation." \textit{Applied Energy}, 348, 121531.
+
+\bibitem{huawei2025}
+Gen Li. (2025). "Huawei TechArena 2025: BESS Energy Management System." \textit{Internal Project Document}.
+\end{thebibliography}
+
+\end{document}

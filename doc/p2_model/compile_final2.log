@@ -1,0 +1,282 @@
+This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.4) (preloaded format=xelatex.fmt)
+ restricted \write18 enabled.
+entering extended mode
+(p2_bi_model_ggdp.tex
+LaTeX2e <2025-06-01> patch level 1
+L3 programming layer <2025-07-19>
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/base\article.cls
+Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/base\size11.clo))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/geometry\geometry.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/graphics\keyval.sty)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/iftex\ifvtex.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/iftex\iftex.sty))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/geometry\geometry.cfg
+))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/fontspec\fontspec.sty
+
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/l3packages/xparse\xpa
+rse.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/l3kernel\expl3.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/l3backend\l3backend-x
+etex.def)))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/fontspec\fontspec-xet
+ex.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/base\fontenc.sty)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/fontspec\fontspec.cfg
+))) (C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/babel\babel.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/babel\xebabel.def)
+*************************************
+* Local config file bblopts.cfg used
+*
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/arabi\bblopts.cfg)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/babel-english\english
+.ldf
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/babel/locale/en\bab
+el-english.tex)))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsmath.sty
+For additional information on amsmath, use the `?' option.
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amstext.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsgen.sty))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsbsy.sty)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsopn.sty))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\amssymb.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\amsfonts.sty
+))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/booktabs\booktabs.sty
+)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/graphics\graphicx.sty
+
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/graphics\graphics.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/graphics\trig.sty)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/graphics-cfg\graphics
+.cfg)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/graphics-def\xetex.de
+f)))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/caption\caption.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/caption\caption3.sty)
+)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/fancyhdr\fancyhdr.sty
+)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\hyperref.sty
+
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/kvsetkeys\kvsetkeys.s
+ty)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/kvdefinekeys\kvdefi
+nekeys.sty)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/pdfescape\pdfescape
+.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/ltxcmds\ltxcmds.sty
+)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/pdftexcmds\pdftexcm
+ds.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/infwarerr\infwarerr
+.sty)))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/hycolor\hycolor.sty)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\nameref.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/refcount\refcount.sty
+)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/gettitlestring\gett
+itlestring.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/kvoptions\kvoptions.s
+ty)))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/etoolbox\etoolbox.sty
+)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/stringenc\stringenc
+.sty)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\pd1enc.def)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/intcalc\intcalc.sty
+) (C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\puenc.def)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/url\url.sty)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/bitset\bitset.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/bigintcalc\bigintca
+lc.sty)))
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\hxetex.def
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/rerunfilecheck\rerunf
+ilecheck.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/generic/uniquecounter\uniqu
+ecounter.sty))) (p2_bi_model_ggdp.aux)
+*geometry* driver: auto-detecting
+*geometry* detected driver: xetex
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/graphics\color.sty
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/graphics-cfg\color.cf
+g)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/graphics\mathcolor.lt
+x)) (p2_bi_model_ggdp.out) (p2_bi_model_ggdp.out)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd)
+(C:\Users\ge75pax\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd)
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[1]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[2]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[3]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[4]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[5]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[6]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 348.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `superscript' on input line 348.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `subscript' on input line 348.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 348.
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[7]
+Missing character: There is no ✓ in font Latin Modern Roman 10 Regular/OT:scrip
+t=latn;language=dflt;mapping=tex-text;!
+Missing character: There is no ✓ in font Latin Modern Roman 10 Regular/OT:scrip
+t=latn;language=dflt;mapping=tex-text;!
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[8]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[9]
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[10]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[11]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[12]
+Overfull \hbox (5.97614pt too wide) in paragraph at lines 650--651
+\TU/LatinModernRoman(0)/m/n/10.95 The following constraints can be optionally e
+nabled via the \TU/LatinModernMono(0)/m/n/10.95 require_sequential_segment_acti
+vation
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[13]
+Overfull \hbox (45.8488pt too wide) in paragraph at lines 659--660
+[]\TU/LatinModernRoman(0)/b/n/10.95 Implementation Note: \TU/LatinModernRoman(0
+)/m/n/10.95 Set \TU/LatinModernMono(0)/m/n/10.95 require_sequential_segment_act
+ivation = False \TU/LatinModernRoman(0)/m/n/10.95 in \TU/LatinModernMono(0)/m/n
+/10.95 aging_config.json
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 685.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\alpha' on input line 685.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 685.
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[14]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[15] (p2_bi_model_ggdp.aux) )
+(see the transcript file for additional information)
+Output written on p2_bi_model_ggdp.pdf (15 pages).
+Transcript written on p2_bi_model_ggdp.log.

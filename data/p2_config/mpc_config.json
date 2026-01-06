@@ -1,0 +1,19 @@
+{
+  "description": "Configuration for MPC-based rolling horizon optimization. Core MPC algorithm parameters only. For test scenarios (country, duration, alpha sweep, visualization), see mpc_test_config.json",
+  "version": "1.0",
+
+  "mpc_parameters": {
+    "horizon_hours": 36,
+    "execution_hours": 24,
+    "duration_days": 365,
+    "initial_soc_fraction": 0.5,
+    "validate_constraints": false,
+    "description": "MPC rolling horizon settings. horizon_hours: optimization lookahead window. execution_hours: committed/executed window (receding horizon step). initial_soc_fraction: starting battery SOC (0.0-1.0). validate_constraints: post-solve validation (disabled for speed)"
+  },
+
+  "notes": {
+    "test_scenarios": "Configure test scenarios in mpc_test_config.json",
+    "solver_settings": "Solver timeouts and tolerances in solver_config.json",
+    "degradation": "Degradation model parameters in aging_config.json"
+  }
+}

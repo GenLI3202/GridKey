@@ -1,0 +1,32 @@
+{
+    "description": "Default financial parameters for investment optimization ROI calculation (update per country)",
+    "investment_eur_per_kwh": 200,
+    "project_lifetime_years": 10,
+    "country_specific": {
+      "DE": {
+        "wacc": 0.083,
+        "inflation": 0.02,
+        "description": "Germany - placeholder values"
+      },
+      "AT": {
+        "wacc": 0.083,
+        "inflation": 0.033,
+        "description": "Austria - placeholder values"
+      },
+      "CH": {
+        "wacc": 0.083,
+        "inflation": 0.01,
+        "description": "Switzerland - typically lower rates"
+      },
+      "CZ": {
+        "wacc": 0.12,
+        "inflation": 0.029,
+        "description": "Czech Republic - placeholder values"
+      },
+      "HU": {
+        "wacc": 0.15,
+        "inflation": 0.046,
+        "description": "Hungary - typically higher rates"
+      }
+    }
+}

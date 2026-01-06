@@ -1,0 +1,57 @@
+{
+  "cyclic_aging": {
+    "description": "Marginal cost of discharging 1 kWh from different SOC segments, based on a power-law model (b=2) and a 100% DoD cycle life of 3840 cycles.",
+    "unit": "EUR/kWh",
+    "num_segments_note": "Array length determines number of segments. 6 segments (current) = 40% fewer binaries, 2-3x faster solve. 10 segments (commented below) = higher accuracy.",
+    "costs": [
+      0.0087,
+      0.0260,
+      0.0434,
+      0.0608,
+      0.0782,
+      0.0955
+    ],
+    "costs_10_segments_alternative": [
+      0.0052,
+      0.0156,
+      0.0260,
+      0.0364,
+      0.0469,
+      0.0573,
+      0.0677,
+      0.0781,
+      0.0885,
+      0.0990
+    ]
+  },
+  "calendar_aging": {
+    "description": "Breakpoints for the piecewise-linear calendar aging cost function (SOS2), derived from Collath et al. (2023).",
+    "unit": {
+      "soc_kwh": "kWh",
+      "cost_eur_hr": "EUR/hr"
+    },
+    "breakpoints": [
+      { "soc_kwh": 0,    "cost_eur_hr": 1.79 },
+      { "soc_kwh": 1118, "cost_eur_hr": 2.15 },
+      { "soc_kwh": 2236, "cost_eur_hr": 3.58 },
+      { "soc_kwh": 3354, "cost_eur_hr": 6.44 },
+      { "soc_kwh": 4472, "cost_eur_hr": 10.73 }
+    ]
+  },
+  "alpha_sweep": {
+    "default_values": [0.1, 0.2, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0],
+    "fine_search_values": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5, 3.0],
+    "coarse_search_values": [0.5, 1.0, 2.0, 3.0],
+    "min": 0.1,
+    "max": 3.0,
+    "step": 0.1,
+    "description": "Alpha parameter sweep configuration for meta-optimization"
+  },
+  "require_sequential_segment_activation": true,
+  "lifo_epsilon_kwh": 0.5,
+  "optimization_notes": {
+    "require_sequential_segment_activation": "Setting to false disables charge/discharge activation binaries to improve solve speed",
+    "lifo_epsilon_kwh": "Tolerance for LIFO fullness constraint. Larger value = faster solve (larger feasible region). 5 kWh = ~1.1% of segment capacity",
+    "performance": "With enforce_segment_binary=false and epsilon=5.0, expect 3-5x speedup vs strict binary enforcement"
+  }
+}

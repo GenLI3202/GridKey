@@ -1,0 +1,37 @@
+# requirements.txt - UPDATED FOR TECHARENA 2025 SUBMISSION
+
+# Core optimization and modeling
+pyomo>=6.7.0                    # Optimization modeling framework
+highspy>=1.7.0                  # HiGHS solver (open-source, fast MIP)
+# Note: Commercial solvers (CPLEX, Gurobi) removed for submission compliance
+# The code auto-detects available solvers: HiGHS, CBC, GLPK in priority order
+
+# Data processing and analysis
+pandas>=2.0.0                   # Data manipulation and analysis
+numpy>=1.24.0,<1.27.0          # Numerical computing
+openpyxl>=3.1.0                 # Excel file reading/writing
+pyarrow>=14.0.0                 # Parquet file format support (for preprocessed data)
+jsonlines>=3.1.0                # JSONL file handling for tidy data
+
+# Visualization and reporting (optional for analysis)
+plotly>=5.15.0                  # Interactive plotting
+matplotlib>=3.7.0              # Static plotting
+seaborn>=0.12.0                 # Statistical visualization
+
+# Investment analysis
+scipy>=1.11.0                   # Financial calculations (NPV, IRR)
+
+# Utilities
+python-dotenv>=1.0.0           # Environment variable management
+
+# Development and testing (optional)
+jupyter>=1.0.0                 # Notebook environment
+ipykernel>=6.25.0              # Jupyter kernel
+
+# ===== SOLVER CONFIGURATION =====
+# Primary solver: HiGHS (open-source, MIT licensed)
+# Backup solvers: CBC, GLPK (all open-source)
+# Auto-detection implemented in optimizer.py
+
+# Note: Built-in Python modules used (no pip installation needed):
+# - logging, datetime, typing, pathlib, warnings, zipfile, shutil

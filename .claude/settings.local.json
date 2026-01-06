@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout /t 15)",
+      "Bash(nul)",
+      "Bash(ping:*)",
+      "Bash(tee:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(dir /B \"H:\\TUM-PC\\TUM_CEM_PhD\\a_tech_arena_hw\\TechArena2025_EMS\\validation_results\\mpc_validation\" 2)",
+      "Bash(dir \"H:\\TUM-PC\\TUM_CEM_PhD\\a_tech_arena_hw\\TechArena2025_EMS\\validation_results\\mpc_validation\\20251116_013155_mpc_ch_3d_alpha1.0\")",
+      "Bash(timeout /t 2 /nobreak)",
+      "Bash(dir:*)",
+      "Bash(pdflatex:*)",
+      "Bash(compile.log)",
+      "Bash(xelatex:*)",
+      "Bash(compile_xe3.log)",
+      "Bash(compile_final1.log)",
+      "Bash(compile_final2.log)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

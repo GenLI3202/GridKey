@@ -1,0 +1,6 @@
+{
+  "general": {
+    "previewFeatures": true,
+    "enablePromptCompletion": true
+  }
+}
