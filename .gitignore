@@ -1,0 +1,104 @@
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore the large data files
+#data/
+#SoloGen_TechArena2025_Phase1/input/
+
+# Ignore generated output from the main script
+#SoloGen_TechArena2025_Phase1/output/
+
+# Ignore generated documentation files
+# doc/*.pdf
+doc/*.log
+doc/*.aux
+doc/*.out
+doc/*.fls
+doc/*.fdb_latexmk
+doc/*.synctex.gz
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# ============================================
+# Large Files (>100MB) - Prevent Git Upload
+# ============================================
+
+# Large JSON result files (8.5GB+)
+validation_results/**/*.html
+submission_results/
+
+
+# Large JSONL data files (200K+ line
+**/input
+**/TechArena2025_data_tidy.jsonl
+
+# Large notebook files with embedded outputs
+# notebook/final_validation.ipynb
+**/doc/Literature
+
+# ZIP archives
+*.zip
+!requirements.txt.zip
+
+# Large Excel files from validation tests
+ValidationTest_*/TechArena_Phase1_Operation.xlsx
+**/vali_TechArena_Phase1_*.xlsx
+SoloGen_Phase2_Submission/output
+
+
+# Temporary and backup files
+*_backup.md
+*_OLD_BACKUP.md
+*.log
+*.aux
+*.out
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# Local editor settings (do not track personal MCP config)
+.vscode/mcp.json
+
+# System/crash files
+nul
+*.stackdump
+
+# ============================================
+# Round 2 Specific Ignores
+# ============================================
+
+# Phase 1 specific patterns
+**/Phase1_*
+**/submission_phase1_*
+**/py_script/p1_model_validation_WeekScale_results/
+
+# Excel temp files
+~$*.xlsx
+
+# Archive backups
+*_backup_*/
+*_old_backup_*/
+
+# Validation logs
+validation_*.log
+
+# Result directories (reorganized structure)
+validation_results/
+
+# Coding Agents' config
+.claude\settings.local.json
+
+# Script-generated progress files
+**/progress.json
+**/*_progress.json
+.gemini/
+gha-creds-*.json
+
+# ============================================
+# Archived Code and Scripts
+# ============================================
+py_script/test/archive/
+py_script/visualization/archive/
+notebook/archive
