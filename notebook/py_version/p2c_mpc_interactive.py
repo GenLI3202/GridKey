@@ -30,21 +30,21 @@ import pandas as pd
 import numpy as np
 
 # Optimization models
-from py_script.core.optimizer import BESSOptimizerModelIII
+from src.core.optimizer import BESSOptimizerModelIII
 
 # MPC simulation
-from py_script.mpc.mpc_simulator import MPCSimulator
-from py_script.mpc.meta_optimizer import MetaOptimizer
-from py_script.mpc.transform_mpc_results import (
+from src.mpc.mpc_simulator import MPCSimulator
+from src.mpc.meta_optimizer import MetaOptimizer
+from src.mpc.transform_mpc_results import (
     transform_mpc_results_for_viz,
     extract_iteration_summary
 )
 
 # Data loading
-from py_script.data.load_process_market_data import load_preprocessed_country_data
+from src.data.load_process_market_data import load_preprocessed_country_data
 
 # Standard visualization utilities
-from py_script.visualization.optimization_analysis import (
+from src.visualization.optimization_analysis import (
     plot_da_market_price_bid,
     plot_afrr_energy_market_price_bid,
     plot_capacity_markets_price_bid,
@@ -52,14 +52,14 @@ from py_script.visualization.optimization_analysis import (
 )
 
 # MPC-specific visualization
-from py_script.visualization.mpc_analysis import (
+from src.visualization.mpc_analysis import (
     plot_iteration_boundaries,
     plot_iteration_performance,
     plot_state_continuity
 )
 
 # Results export
-from py_script.validation.results_exporter import save_optimization_results
+from src.validation.results_exporter import save_optimization_results
 
 print("[OK] All imports successful!")
 print(f"Project root: {project_root}")

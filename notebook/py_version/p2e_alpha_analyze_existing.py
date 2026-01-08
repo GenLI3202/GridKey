@@ -26,7 +26,7 @@ project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
 # Import McKinsey styling
-from py_script.visualization.config import (
+from src.visualization.config import (
     MCKINSEY_COLORS,
     COUNTRY_COLORS,
     apply_mckinsey_style,

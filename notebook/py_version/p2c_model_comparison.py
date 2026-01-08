@@ -33,7 +33,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from py_script.visualization.model_comparison import (
+from src.visualization.model_comparison import (
     load_model_results,
     plot_profit_waterfall_comparison,
     plot_revenue_components_grouped,

@@ -27,13 +27,13 @@ import plotly.graph_objects as go
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from py_script.visualization.optimization_analysis import (
+from src.visualization.optimization_analysis import (
     plot_da_market_price_bid,
     plot_afrr_energy_market_price_bid,
     plot_capacity_markets_price_bid,
     plot_soc_and_power_bids
 )
-from py_script.visualization.config import MCKINSEY_COLORS, MCKINSEY_FONTS
+from src.visualization.config import MCKINSEY_COLORS, MCKINSEY_FONTS
 
 # =============================================================================
 # CONFIGURATION - EDIT THIS!

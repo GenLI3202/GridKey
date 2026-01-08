@@ -49,29 +49,29 @@ if str(project_root) not in sys.path:
 import importlib
 
 # Reload load_process_market_data
-if 'py_script.data.load_process_market_data' in sys.modules:
-    import py_script.data.load_process_market_data
-    importlib.reload(py_script.data.load_process_market_data)
+if 'src.data.load_process_market_data' in sys.modules:
+    import src.data.load_process_market_data
+    importlib.reload(src.data.load_process_market_data)
 # Reload visualize_market_data
-if 'py_script.data.visualize_market_data' in sys.modules:
-    import py_script.data.visualize_market_data
-    importlib.reload(py_script.data.visualize_market_data)
+if 'src.data.visualize_market_data' in sys.modules:
+    import src.data.visualize_market_data
+    importlib.reload(src.data.visualize_market_data)
 # Reload visualization.config (if it exists)
-if 'py_script.data.config' in sys.modules:
-    import py_script.data.config
-    importlib.reload(py_script.data.config)
+if 'src.data.config' in sys.modules:
+    import src.data.config
+    importlib.reload(src.data.config)
 
 
 # Import custom modules
 
-from py_script.data.load_process_market_data import (
+from src.data.load_process_market_data import (
     load_phase2_market_tables,
     validate_phase2_data,
     convert_afrr_energy_zero_to_nan,
     TIMESTAMP_COL, COUNTRY_COL, PRICE_COL_MWH, PRICE_COL_MW, DIRECTION_COL, AFRR_DIRECTION_ALIASES
 )
 
-from py_script.data.visualize_market_data import (
+from src.data.visualize_market_data import (
     # McKinsey plotting functions
     plot_price_time_series_mckinsey,
     plot_da_price_distribution_mckinsey,
@@ -92,7 +92,7 @@ from py_script.data.visualize_market_data import (
     summarize_afrr
 )
 
-from py_script.data.config import (
+from src.data.config import (
     MCKINSEY_COLORS,
     COUNTRY_COLORS,
     apply_mckinsey_style,
@@ -202,15 +202,15 @@ fig3.show()
 #     del sys.modules['py_script.data.load_process_market_data']
 # 
 # # Reimport
-# from py_script.data.visualize_market_data import plot_all_markets_distribution
+# from src.data.visualize_market_data import plot_all_markets_distribution
 # 
 # # Test the fixed function
 # fig1 = plot_all_markets_distribution(tables, countries=['DE', 'AT', 'CH'])
 # fig1.show()rtlib
 # if 'py_script.data.visualize_market_data' in sys.modules:
-#     import py_script.data.visualize_market_data
+#     import src.data.visualize_market_data
 #     importlib.reload(py_script.data.visualize_market_data)
-#     from py_script.data.visualize_market_data import plot_all_markets_distribution
+#     from src.data.visualize_market_data import plot_all_markets_distribution
 # 
 # # Test the fixed function
 # fig1 = plot_all_markets_distribution(tables, countries=['DE', 'AT', 'CH'])

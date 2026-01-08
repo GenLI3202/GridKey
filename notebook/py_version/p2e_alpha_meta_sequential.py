@@ -30,17 +30,17 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Core optimizer
-from py_script.core.optimizer import BESSOptimizerModelIII
+from src.core.optimizer import BESSOptimizerModelIII
 
 # MPC simulation
-from py_script.mpc.mpc_simulator import MPCSimulator
-from py_script.mpc.transform_mpc_results import (
+from src.mpc.mpc_simulator import MPCSimulator
+from src.mpc.transform_mpc_results import (
     transform_mpc_results_for_viz,
     extract_iteration_summary
 )
 
 # Data loading
-from py_script.data.load_process_market_data import load_preprocessed_country_data
+from src.data.load_process_market_data import load_preprocessed_country_data
 
 print("=" * 80)
 print("[SECTION 1] SETUP COMPLETE")

@@ -56,23 +56,23 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Optimization models
-from py_script.core.optimizer import BESSOptimizerModelIII
+from src.core.optimizer import BESSOptimizerModelIII
 
 # MPC simulation
-from py_script.mpc.mpc_simulator import MPCSimulator
-from py_script.mpc.transform_mpc_results import (
+from src.mpc.mpc_simulator import MPCSimulator
+from src.mpc.transform_mpc_results import (
     transform_mpc_results_for_viz,
     extract_iteration_summary
 )
 
 # Data loading
-from py_script.data.load_process_market_data import load_preprocessed_country_data
+from src.data.load_process_market_data import load_preprocessed_country_data
 
 # Visualization
-from py_script.visualization.config import WATERFALL_COLORS, MCKINSEY_COLORS, apply_mckinsey_style
+from src.visualization.config import WATERFALL_COLORS, MCKINSEY_COLORS, apply_mckinsey_style
 
 # Results export
-from py_script.validation.results_exporter import save_optimization_results
+from src.validation.results_exporter import save_optimization_results
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')

@@ -29,13 +29,13 @@ if str(project_root) not in sys.path:
 import pandas as pd
 import numpy as np
 
-from py_script.core.optimizer import (
+from src.core.optimizer import (
     BESSOptimizerModelI,
     BESSOptimizerModelII,
     BESSOptimizerModelIII
 )
 
-from py_script.visualization.optimization_analysis import (
+from src.visualization.optimization_analysis import (
     extract_detailed_solution,
     plot_da_market_price_bid,
     plot_afrr_energy_market_price_bid,
@@ -43,12 +43,12 @@ from py_script.visualization.optimization_analysis import (
     plot_soc_and_power_bids
 )
 
-from py_script.validation.results_exporter import save_optimization_results
-from py_script.visualization.aging_analysis import (
+from src.validation.results_exporter import save_optimization_results
+from src.visualization.aging_analysis import (
     plot_stacked_cyclic_soc,
     plot_calendar_aging_curve,
 )
-from py_script.data.load_process_market_data import load_preprocessed_country_data
+from src.data.load_process_market_data import load_preprocessed_country_data
 
 print("[OK] All imports successful!")
 

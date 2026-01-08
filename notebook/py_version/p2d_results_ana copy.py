@@ -43,7 +43,7 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 
 # Standard visualization utilities
-from py_script.visualization.optimization_analysis import (
+from src.visualization.optimization_analysis import (
     plot_da_market_price_bid,
     plot_afrr_energy_market_price_bid,
     plot_capacity_markets_price_bid,
@@ -51,14 +51,14 @@ from py_script.visualization.optimization_analysis import (
 )
 
 # MPC-specific visualization
-from py_script.visualization.mpc_analysis import (
+from src.visualization.mpc_analysis import (
     plot_iteration_boundaries,
     plot_iteration_performance,
     plot_state_continuity
 )
 
 # Aging visualization
-from py_script.visualization.aging_analysis import (
+from src.visualization.aging_analysis import (
     plot_stacked_cyclic_soc,
     plot_calendar_aging_curve,
 )
@@ -610,7 +610,7 @@ if n_success > 0 and GENERATE_PLOTS:
     pivot_profit = pivot_profit.drop('total', axis=1)
 
     # Import McKinsey colors for heatmap
-    from py_script.visualization.config import MCKINSEY_COLORS
+    from src.visualization.config import MCKINSEY_COLORS
 
     # Create McKinsey blue color scale (light to dark blue)
     # Custom colorscale: white -> light blue -> medium blue -> dark blue -> navy
@@ -892,7 +892,7 @@ for i, scenario_dir in enumerate(scenarios_to_analyze, 1):
         print("  [8/10] Financial Breakdown (Revenue & Cost)...")
 
         # Import waterfall colors for consistency
-        from py_script.visualization.config import WATERFALL_COLORS, MCKINSEY_COLORS
+        from src.visualization.config import WATERFALL_COLORS, MCKINSEY_COLORS
         from plotly.subplots import make_subplots
 
         # Calculate detailed revenue breakdown from iteration data
