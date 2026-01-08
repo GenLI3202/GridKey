@@ -137,8 +137,8 @@ $$profit =(Revenue_{Energy}+Revenue_{Services})−Cost_{Charging}−Cost_{aging}
 * **CI/CD 流水线：** 配置 GitHub Actions，每次代码提交自动运行单元测试与集成测试，确保算法内核的稳定性。
 * **容器化部署 (Dockerization)：** 将 Simulator、Web Server、Database 全面容器化，实现 `docker-compose up` 一键部署，确保环境一致性。
 * **文档工程：**
-* 不只是 API 文档，更包含**架构决策记录 (ADR)**。
-* 详细阐述“为什么选择 MILP 而非 RL”、“为什么选择 SQLite”等设计哲学，体现系统性思考。
+    - 不只是 API 文档，更包含**架构决策记录 (ADR)**。
+    - 详细阐述“为什么选择 MILP 而非 RL”、“为什么选择 SQLite”等设计哲学，体现系统性思考。
 
 
 
