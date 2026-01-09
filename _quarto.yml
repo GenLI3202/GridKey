@@ -1,0 +1,21 @@
+project:
+  title: "GridKey BESS"
+  output-dir: _output
+
+bibliography: doc/references.bib
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    code-fold: true
+    number-sections: true
+    embed-resources: true
+  pdf:
+    documentclass: article
+    number-sections: true
+    geometry:
+      - top=25mm
+      - bottom=25mm
+      - left=20mm
+      - right=20mm

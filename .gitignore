@@ -17,6 +17,7 @@ doc/*.out
 doc/*.fls
 doc/*.fdb_latexmk
 doc/*.synctex.gz
+doc/reports/
 
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
@@ -69,10 +70,6 @@ nul
 # Round 2 Specific Ignores
 # ============================================
 
-# Phase 1 specific patterns
-**/Phase1_*
-**/submission_phase1_*
-**/py_script/p1_model_validation_WeekScale_results/
 
 # Excel temp files
 ~$*.xlsx
@@ -99,6 +96,6 @@ gha-creds-*.json
 # ============================================
 # Archived Code and Scripts
 # ============================================
-py_script/test/archive/
-py_script/visualization/archive/
+src/test/archive/
+src/visualization/archive/
 notebook/archive

@@ -24,7 +24,39 @@
 
 ---
 
-## 2. 工作流概述
+## 2. 安装与依赖
+
+### 安装 Quarto
+
+下载：https://quarto.org/docs/get-started/
+
+验证安装：
+```bash
+quarto --version
+```
+
+### Python 依赖
+
+```bash
+pip install jupyter pyyaml pandas numpy plotly
+```
+
+### PDF 输出依赖（LaTeX）
+
+| 系统 | 推荐发行版 |
+|------|-----------|
+| Windows | MiKTeX 或 TinyTeX |
+| macOS | MacTeX 或 TinyTeX |
+| Linux | TeX Live 或 TinyTeX |
+
+快速安装 （示例）TinyTeX：
+```bash
+quarto install tinytex
+```
+
+---
+
+## 3. 工作流概述
 
 ```
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
@@ -36,7 +68,7 @@
    (文档配置)           (项目配置)
 ```
 
-**核心命令：**
+### 核心命令（给AI渲染也ok）
 
 ```bash
 quarto render doc.qmd          # 渲染单个文件
@@ -46,7 +78,7 @@ quarto preview doc.qmd         # 实时预览（自动刷新）
 
 ---
 
-## 3. 核心概念：配置层级
+## 4. 核心概念：配置层级
 
 Quarto 采用**两级配置**，文档配置可覆盖项目配置。
 
@@ -97,9 +129,22 @@ format:
 
 ---
 
-## 4. 输出格式详解
+## 5. 输出格式详解
 
-### 4.1 HTML 报告
+### 格式速查表（完整格式表参阅Quarto官方文档）
+
+| 类型 | 格式 | 命令 | 用途 |
+|------|------|------|------|
+| 文档 | HTML | `--to html` | 交互式网页报告 |
+| 文档 | PDF | `--to pdf` | 打印、正式文档 |
+| 文档 | Word | `--to docx` | 可编辑文档，协作 |
+| 演示 | **Revealjs** | `--to revealjs` | 网页幻灯片（推荐） |
+| 演示 | PowerPoint | `--to pptx` | .pptx 幻灯片 |
+| 演示 | Beamer | `--to beamer` | LaTeX PDF 幻灯片 |
+| 高级 | Dashboard | `format: dashboard` | 交互式仪表板 |
+| 高级 | Website | `type: website` | 多页面文档网站 |
+
+### 5.1 HTML 报告
 
 ```yaml
 format:
@@ -109,12 +154,14 @@ format:
     code-fold: true        # 代码块可折叠
     code-tools: true       # 显示代码工具栏
     embed-resources: true  # 自包含单文件（便于分享）
-    theme: cosmo           # 主题：cosmo/flatly/darkly/...
+    self-contained: true   # 生成独立的 .html 文件，方便通过邮件/Slack 发送
+    theme: cosmo           # 主题选择
+    number-sections: true  # 章节自动编号
 ```
 
 **常用主题**：`cosmo`（默认）、`flatly`（扁平）、`darkly`（暗色）、`journal`（学术）
 
-### 4.2 PDF 文档
+### 5.2 PDF 文档
 
 ```yaml
 format:
@@ -128,33 +175,60 @@ format:
     number-sections: true     # 章节自动编号
     toc: true                 # 显示目录
     colorlinks: true          # 彩色链接
+    fig-pos: 'H'              # 强制图片不乱跑
     keep-tex: false           # 是否保留 .tex 中间文件
 ```
 
-**注意**：PDF 输出需要安装 LaTeX 发行版（如 TinyTeX、MiKTeX）
-
-### 4.3 Revealjs 演示文稿
+### 5.3 Revealjs 演示文稿
 
 ```yaml
 format:
   revealjs:
-    theme: serif             # 主题：serif/simple/night/moon/...
-    slide-number: true       # 显示页码
-    transition: slide        # 切换动画：slide/fade/convex/none
-    chalkboard: true         # 启用画板（可在幻灯片上标注）
-    scrollable: true         # 长内容页面可滚动
-    center: false            # 内容垂直居中
-    width: 1050              # 幻灯片宽度
-    height: 700              # 幻灯片高度
+    theme: serif               # 主题：serif/simple/night/moon
+    slide-number: true         # 显示页码
+    transition: slide          # 切换动画：slide/fade/convex/none
+    chalkboard: true           # 启用画板（可在幻灯片上标注）
+    scrollable: true           # 长内容页面可滚动
+    incremental: true          # 列表项逐条显示
+    center: false              # 内容垂直居中
+    width: 1050                # 幻灯片宽度
+    height: 700                # 幻灯片高度
+    code-line-numbers: true    # 代码行号高亮
+    footer: "GridKey Project"  # 页脚文字
 ```
 
 **幻灯片分页**：使用 `##` 二级标题自动分页
 
 **常用主题**：`serif`（衬线）、`simple`（简洁）、`night`（暗色）、`moon`（月光）
 
+### 5.4 多格式同时输出
+
+在 `_quarto.yml` 或文档 YAML Header 中配置多种格式：
+
+```yaml
+format:
+  html:
+    toc: true
+    embed-resources: true
+  pdf:
+    toc: true
+  revealjs:
+    theme: serif
+```
+
+然后运行 `quarto render` 会同时输出所有配置的格式。
+
 ---
 
-## 5. 代码执行控制
+## 6. 代码执行控制
+
+### 三种开发模式
+
+| 模式 | 配置 | 速度 | 用途 |
+|------|------|------|------|
+| **开发模式** | `enabled: false` | 秒开 | 编辑文字、调整格式 |
+| **测试模式** | `freeze: auto` | 较快 | 只重新执行修改的代码 |
+| **发布模式** | 默认设置 | 完整 | 最终渲染 |
 
 ### 项目级（`_quarto.yml`）
 
@@ -176,9 +250,11 @@ execute:
 
 ````markdown
 ```{python}
-#| eval: false    # 不执行此代码块
-#| echo: false    # 不显示代码，只显示结果
-#| code-fold: true
+#| label: fig-soc           # 标签，用于交叉引用
+#| fig-cap: "SOC 轨迹图"     # 图表标题
+#| eval: false              # 不执行此代码块
+#| echo: false              # 不显示代码，只显示结果
+#| code-fold: true          # 代码可折叠
 ```
 ````
 
@@ -186,9 +262,9 @@ execute:
 
 ---
 
-## 6. 文献引用
+## 7. 文献引用与交叉引用
 
-### 配置
+### 文献引用配置
 
 ```yaml
 # _quarto.yml 或 .qmd YAML Header
@@ -196,7 +272,7 @@ bibliography: ../references.bib
 csl: https://www.zotero.org/styles/ieee   # 引用格式
 ```
 
-### 使用
+### 文献引用语法
 
 ```markdown
 基于 @xuFactoringCycleAging2017 的退化模型...
@@ -215,11 +291,99 @@ csl: https://www.zotero.org/styles/ieee   # 引用格式
 :::
 ```
 
+### 交叉引用（Cross-References）
+
+在代码块或元素上设置 `label`，然后用 `@` 引用：
+
+| 类型 | 标签格式 | 引用语法 |
+|------|----------|----------|
+| 图表 | `#| label: fig-xxx` | `@fig-xxx` |
+| 表格 | `#| label: tbl-xxx` | `@tbl-xxx` |
+| 公式 | `{#eq-xxx}` | `@eq-xxx` |
+
+**示例**：
+
+````markdown
+```{python}
+#| label: fig-soc
+#| fig-cap: "电池 SOC 轨迹"
+
+import plotly.express as px
+# 绑图代码...
+```
+
+如 @fig-soc 所示，SOC 呈周期性变化。
+````
+
 ---
 
-## 7. 本项目配置速查
+## 8. 场景化配置示例
 
-当前 `doc/reports/_quarto.yml` 关键配置：
+### 场景 1：数据分析报告（给团队看）
+
+```yaml
+format:
+  html:
+    toc: true
+    code-fold: true
+    embed-resources: true  # 单文件，可发邮件
+  docx: default            # Word 版本供编辑
+```
+
+### 场景 2：竞赛/会议演示文稿
+
+```yaml
+format:
+  revealjs:
+    theme: serif
+    slide-number: true
+    chalkboard: true       # 可以在幻灯片上画图
+    transition: slide
+```
+
+### 场景 3：学术论文/技术报告
+
+```yaml
+format:
+  pdf:
+    documentclass: article
+    number-sections: true
+    toc: true
+    colorlinks: true
+```
+
+### 场景 4：数据仪表板
+
+```yaml
+---
+title: "BESS Performance Dashboard"
+format: dashboard
+---
+
+## Row
+
+```{python}
+#| content: valuebox
+#| title: "Total Profit"
+dict(value="€125,430", icon="currency-euro")
+```
+```
+
+---
+
+## 9. 本项目配置速查
+
+### 目录结构
+
+```
+doc/reports/
+├── _quarto.yml          # 项目配置
+├── _output/             # 输出目录 (gitignored)
+├── *.qmd                # 源文件
+└── QUARTO_GUIDE.md      # 本指南
+```
+
+### 当前 `_quarto.yml` 关键配置
 
 | 配置项 | 值 | 说明 |
 |--------|-----|------|
@@ -236,15 +400,18 @@ csl: https://www.zotero.org/styles/ieee   # 引用格式
 ## 快速参考
 
 ```bash
-# 渲染为 HTML
-quarto render report.qmd --to html
+# 渲染命令
+quarto render report.qmd              # 渲染单文件（所有配置格式）
+quarto render report.qmd --to html    # 仅渲染 HTML
+quarto render report.qmd --to pdf     # 仅渲染 PDF
+quarto render report.qmd --to revealjs # 仅渲染幻灯片
+quarto render                         # 渲染整个项目
 
-# 渲染为 PDF
-quarto render report.qmd --to pdf
+# 预览命令
+quarto preview report.qmd             # 实时预览（自动刷新）
 
-# 渲染为 Revealjs 幻灯片
-quarto render slides.qmd --to revealjs
-
-# 实时预览
-quarto preview report.qmd
+# 创建项目模板
+quarto create project default my_report
+quarto create project revealjs my_slides
+quarto create project dashboard my_dashboard
 ```
