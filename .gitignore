@@ -17,7 +17,7 @@ doc/*.out
 doc/*.fls
 doc/*.fdb_latexmk
 doc/*.synctex.gz
-doc/reports/
+doc/reports
 
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
