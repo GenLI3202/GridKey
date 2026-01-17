@@ -6,6 +6,9 @@ highspy>=1.7.0                  # HiGHS solver (open-source, fast MIP)
 # cplex                           # IBM CPLEX (if available with license)
 gurobipy                        # Gurobi (if available with license)
 
+# Configuration
+pyyaml>=6.0                     # YAML configuration file parsing
+
 # Data processing and analysis
 pandas>=2.2.2                   # Data manipulation and analysis
 numpy>=2.1.0                   # Numerical computing
