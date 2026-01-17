@@ -32,8 +32,8 @@ def main():
     config = {
         'country': 'CH',
         'num_days': 5,
-        'horizon_hours': 32,      # From mpc_config.json
-        'execution_hours': 24,     # From mpc_config.json
+        'horizon_hours': 32,      # From config/Config.yml mpc_config section
+        'execution_hours': 24,     # From config/Config.yml mpc_config section
         'alpha': 1.0,
         'c_rate': 0.5,
         'initial_soc_fraction': 0.5

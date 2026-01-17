@@ -57,22 +57,12 @@ print("[OK] All imports successful!")
 # LOAD CONFIGURATION FILES
 # ============================================================================
 
-config_dir = project_root / "data" / "p2_config"
+# Load configuration from unified YAML config
+from src.utils.config_loader import ConfigLoader
 
-# Load solver config
-solver_config_path = config_dir / "solver_config.json"
-with open(solver_config_path, 'r') as f:
-    solver_config = json.load(f)
-
-# Load aging config
-aging_config_path = config_dir / "aging_config.json"
-with open(aging_config_path, 'r') as f:
-    aging_config = json.load(f)
-
-# Load aFRR EV weights config (if needed for EV weighting)
-afrr_ev_config_path = config_dir / "afrr_ev_weights_config.json"
-with open(afrr_ev_config_path, 'r') as f:
-    afrr_ev_config = json.load(f)
+solver_config = ConfigLoader.get_solver_config()
+aging_config = ConfigLoader.get_aging_config()
+afrr_ev_config = ConfigLoader.get_afrr_ev_weights_config()
 
 # Extract default values
 DEFAULT_REQUIRE_SEQUENTIAL = aging_config.get('require_sequential_segment_activation', False)
@@ -84,16 +74,13 @@ DEFAULT_SOLVER_TIME_LIMIT = solver_config.get('solver_time_limit_sec', 600)
 cyclic_costs = aging_config['cyclic_aging']['costs']
 calendar_breakpoints = aging_config['calendar_aging']['breakpoints']
 
-print(f"[OK] Loaded configuration files:")
-print(f"   - {solver_config_path.name}")
-print(f"   - {aging_config_path.name}")
-print(f"   - {afrr_ev_config_path.name}")
+print(f"[OK] Loaded configuration from config/Config.yml")
 
-print(f"\n[DEFAULTS] From solver_config.json:")
+print(f"\n[DEFAULTS] From solver_config:")
 print(f"   default_solver: {DEFAULT_SOLVER}")
 print(f"   solver_time_limit_sec: {DEFAULT_SOLVER_TIME_LIMIT}")
 
-print(f"\n[DEFAULTS] From aging_config.json:")
+print(f"\n[DEFAULTS] From aging_config:")
 print(f"   REQUIRE_SEQUENTIAL_SEGMENT_ACTIVATION: {DEFAULT_REQUIRE_SEQUENTIAL}")
 print(f"   lifo_epsilon_kwh: {DEFAULT_LIFO_EPSILON} kWh")
 
@@ -134,7 +121,7 @@ CONFIGURATION NOTES:
 TEST_COUNTRY = "CZ"                 # Options: DE_LU, AT, CH, HU, CZ
 TEST_C_RATE = 0.5                   # Options: 0.25, 0.33, 0.5
 TEST_ALPHA = 1.0                    # Degradation weight
-TEST_TIME_HORIZON_HOURS = 36        # Time horizon in hours (24h feasible with 6-segment config)
+TEST_TIME_HORIZON_HOURS = 12        # Time horizon in hours (24h feasible with 6-segment config)
 TEST_START_STEP = int(96*132)         # Starting time step (96 = 1 day in 15-min intervals) (May 12th of CZ has interesting negative da prices)
 TEST_MODEL = "III"                  # Options: "I", "II", "III"
 USE_EV_WEIGHTING = True            # Enable aFRR EV weighting
@@ -590,10 +577,8 @@ if RELOAD_MODE:
                 if reload_solution_dict['c_cal_cost']:
                     print("\n[1/1] Calendar Aging Cost Curve...")
                     try:
-                        # Load aging config
-                        aging_config_path = Path(r"data/p2_config/aging_config.json")
-                        with open(aging_config_path, 'r') as f:
-                            reload_aging_config = json.load(f)
+                        # Load aging config from unified YAML
+                        reload_aging_config = ConfigLoader.get_aging_config()
 
                         # Extract metadata for title
                         country = perf_summary.get('country', 'Unknown')

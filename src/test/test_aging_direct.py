@@ -60,12 +60,10 @@ def main():
     print("[1/3] Running Model III optimization...")
     print("-" * 80)
 
-    # Initialize
-    aging_config_path = "data/p2_config/aging_config.json"
+    # Initialize (uses default ConfigLoader from config/Config.yml)
     optimizer = BESSOptimizerModelIII(
         alpha=alpha,
-        use_afrr_ev_weighting=True,
-        degradation_config_path=aging_config_path
+        use_afrr_ev_weighting=True
     )
     optimizer.max_as_ratio = 0.8
 
@@ -113,9 +111,9 @@ def main():
     output_dir = Path("results/aging_direct_test")
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    # Load aging config for breakpoint overlay
-    with open(aging_config_path) as f:
-        aging_config = json.load(f)
+    # Load aging config from unified YAML
+    from src.utils.config_loader import ConfigLoader
+    aging_config = ConfigLoader.get_aging_config()
 
     # Test 1: Cyclic SOC plot (direct from solution dict!)
     print(f"\n  Test 1: plot_stacked_cyclic_soc(solution)")

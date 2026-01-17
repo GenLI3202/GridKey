@@ -115,12 +115,10 @@ class BESSOptimizerModelI:
             'daily_cycle_limit': 1.0  # Default, will be overridden
         }
 
-        # Load solver configuration
-        project_root = Path(__file__).resolve().parent.parent.parent
-        solver_config_path = project_root / 'data' / 'p2_config' / 'solver_config.json'
+        # Load solver configuration from unified YAML config
         try:
-            with open(solver_config_path, 'r') as f:
-                solver_config = json.load(f)
+            from src.utils.config_loader import ConfigLoader
+            solver_config = ConfigLoader.get_solver_config()
             solver_time_limit = solver_config.get('solver_time_limit_sec', 1200)
             self.solver_config = solver_config
         except Exception as e:
@@ -163,39 +161,32 @@ class BESSOptimizerModelI:
         Load aFRR activation probability configuration for Expected Value weighting.
 
         Returns:
-            Dictionary with activation probabilities by country
+            Dictionary with activation probabilities by country (normalized structure)
 
         Raises:
-            FileNotFoundError: If config file doesn't exist
             ValueError: If config format is invalid
         """
         if self._activation_config is not None:
             return self._activation_config
 
-        config_path = Path(__file__).parent.parent.parent / 'data' / 'p2_config' / 'afrr_ev_weights_config.json'
-
-        if not config_path.exists():
-            logger.warning(f"Activation config not found at {config_path}. Using default probabilities.")
-            # Fallback to defaults
-            self._activation_config = {
-                'default_probabilities': {'positive': 0.30, 'negative': 0.30},
-                'country_specific': {}
-            }
-            return self._activation_config
-
         try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
+            from src.utils.config_loader import ConfigLoader
+            afrr_config = ConfigLoader.get_afrr_ev_weights_config()
 
-            # Validate config structure
-            if 'default_probabilities' not in config:
-                raise ValueError("Missing 'default_probabilities' in activation config")
+            # Extract historical_activation section (primary source for EV weighting)
+            hist_activation = afrr_config.get('historical_activation', {})
 
-            if 'positive' not in config['default_probabilities'] or 'negative' not in config['default_probabilities']:
-                raise ValueError("Missing 'positive' or 'negative' in default_probabilities")
+            # Normalize to expected structure: default_probabilities + country_specific
+            config = {
+                'default_probabilities': {
+                    'positive': hist_activation.get('default_values', {}).get('positive', 0.30),
+                    'negative': hist_activation.get('default_values', {}).get('negative', 0.30)
+                },
+                'country_specific': hist_activation.get('country_specific', {})
+            }
 
             self._activation_config = config
-            logger.info(f"Loaded activation config from {config_path}")
+            logger.info("Loaded activation config from config/Config.yml")
 
             # Log default values
             default_pos = config['default_probabilities']['positive']
@@ -203,16 +194,20 @@ class BESSOptimizerModelI:
             logger.info(f"Default activation rates: pos={default_pos:.2f}, neg={default_neg:.2f}")
 
             # Log country-specific values if available
-            if 'country_specific' in config and config['country_specific']:
+            if config['country_specific']:
                 countries_with_custom = list(config['country_specific'].keys())
                 logger.info(f"Custom activation rates available for: {', '.join(countries_with_custom)}")
 
             return self._activation_config
 
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in activation config: {str(e)}")
         except Exception as e:
-            raise ValueError(f"Error loading activation config: {str(e)}")
+            logger.warning(f"Failed to load activation config: {e}. Using default probabilities.")
+            # Fallback to defaults
+            self._activation_config = {
+                'default_probabilities': {'positive': 0.30, 'negative': 0.30},
+                'country_specific': {}
+            }
+            return self._activation_config
 
     def _validate_input_data(self, country_data: pd.DataFrame, blocks: List[int], 
                            days: List[int], T_data: List[int]) -> None:
@@ -1486,11 +1481,11 @@ class BESSOptimizerModelII(BESSOptimizerModelI):
         if config:
             self._apply_optional_config(config)
 
-        if degradation_config_path is None:
-            project_root = Path(__file__).resolve().parent.parent.parent
-            degradation_config_path = project_root / 'data' / 'p2_config' / 'aging_config.json'
-
-        self.degradation_config = self._load_degradation_config(degradation_config_path)
+        # Load degradation config: from explicit path or unified YAML config
+        if degradation_config_path is not None:
+            self.degradation_config = self._load_degradation_config_from_file(degradation_config_path)
+        else:
+            self.degradation_config = self._load_degradation_config_from_yaml()
 
         cyclic_config = self.degradation_config['cyclic_aging']
         num_segments = len(cyclic_config['costs'])
@@ -1503,7 +1498,7 @@ class BESSOptimizerModelII(BESSOptimizerModelI):
             'segment_capacity_kwh': segment_capacity,
             'marginal_costs': cyclic_config['costs'],
             'alpha': float(alpha),
-            'config_file_path': str(degradation_config_path),
+            'config_file_path': str(degradation_config_path) if degradation_config_path else 'config/Config.yml',
             'require_sequential_segment_activation': self.degradation_config.get('require_sequential_segment_activation', require_sequential_segment_activation),
             'lifo_epsilon_kwh': self.degradation_config.get('lifo_epsilon_kwh', 5.0),
         }
@@ -1538,15 +1533,32 @@ class BESSOptimizerModelII(BESSOptimizerModelI):
         if isinstance(market_updates, dict):
             self.market_params.update(market_updates)
 
-    def _load_degradation_config(self, config_path: Any) -> Dict[str, Any]:
-        """Load cyclic aging configuration from JSON file."""
+    def _load_degradation_config_from_yaml(self) -> Dict[str, Any]:
+        """Load aging configuration from unified YAML config."""
+        try:
+            from src.utils.config_loader import ConfigLoader
+            config = ConfigLoader.get_aging_config()
+
+            if 'cyclic_aging' not in config:
+                raise KeyError("Missing 'cyclic_aging' key in aging config")
+
+            if 'costs' not in config['cyclic_aging']:
+                raise KeyError("Missing 'costs' array in cyclic_aging config")
+
+            logger.info("Loaded degradation config from: config/Config.yml")
+            return config
+        except Exception as e:
+            raise ValueError(f"Failed to load aging config from YAML: {e}") from e
+
+    def _load_degradation_config_from_file(self, config_path: Any) -> Dict[str, Any]:
+        """Load cyclic aging configuration from JSON file (legacy support)."""
 
         config_file = Path(config_path)
 
         if not config_file.exists():
             raise FileNotFoundError(
                 f"Degradation config file not found: {config_path}\n"
-                "Expected location: data/p2_config/aging_config.json"
+                "Expected location: config/Config.yml (or pass explicit path)"
             )
 
         try:

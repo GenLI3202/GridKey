@@ -285,13 +285,12 @@ def plot_calendar_aging_curve(
 
     Examples
     --------
-    >>> import json
     >>> # PREFERRED: Use solution dict directly
     >>> solution = optimizer.extract_solution(model, results)
     >>>
     >>> # Load aging config for breakpoint overlay
-    >>> with open('data/p2_config/aging_config.json') as f:
-    >>>     aging_config = json.load(f)
+    >>> from src.utils.config_loader import ConfigLoader
+    >>> aging_config = ConfigLoader.get_aging_config()
     >>>
     >>> fig = plot_calendar_aging_curve(solution, aging_config, title_suffix="HU Winter")
     >>> fig.show()
@@ -483,8 +482,8 @@ def plot_aging_validation_suite(
 
     Examples
     --------
-    >>> import json
     >>> from pathlib import Path
+    >>> from src.utils.config_loader import ConfigLoader
     >>>
     >>> # Run optimization with Model III
     >>> optimizer = BESSOptimizerModelIII(alpha=1.0)
@@ -493,8 +492,7 @@ def plot_aging_validation_suite(
     >>> solution = optimizer.extract_solution(solved_model, results)
     >>>
     >>> # Load aging config for breakpoint overlay
-    >>> with open('data/p2_config/aging_config.json') as f:
-    >>>     aging_config = json.load(f)
+    >>> aging_config = ConfigLoader.get_aging_config()
     >>>
     >>> # Generate all plots (no need for test_data or horizon_hours!)
     >>> figs = plot_aging_validation_suite(

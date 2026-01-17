@@ -84,40 +84,25 @@ SAVED_RESULTS_DIR = f"validation_results/mpc_validation/{saved_stamp}"
 # Configuration Files
 # ============================================================================
 
-# Define configuration paths
-config_dir = project_root / "data" / "p2_config"
+# Load configuration from unified YAML config
+from src.utils.config_loader import ConfigLoader
 
-# Load MPC configuration
-mpc_config_path = config_dir / "mpc_config.json"
-with open(mpc_config_path, 'r') as f:
-    mpc_config = json.load(f)
-    print(f"[OK] Loaded MPC config: {mpc_config_path.name}")
+mpc_config = ConfigLoader.get_mpc_config()
+print(f"[OK] Loaded MPC config")
 
-# Load MPC test configuration
-mpc_test_config_path = config_dir / "mpc_test_config.json"
-with open(mpc_test_config_path, 'r') as f:
-    mpc_test_config = json.load(f)
-    print(f"[OK] Loaded MPC test config: {mpc_test_config_path.name}")
+mpc_test_config = ConfigLoader.get_mpc_test_config()
+print(f"[OK] Loaded MPC test config")
 
-# Load solver config
-solver_config_path = config_dir / "solver_config.json"
-with open(solver_config_path, 'r') as f:
-    solver_config = json.load(f)
-    print(f"[OK] Loaded solver config: {solver_config_path.name}")
+solver_config = ConfigLoader.get_solver_config()
+print(f"[OK] Loaded solver config")
 
-# Load aging config
-aging_config_path = config_dir / "aging_config.json"
-with open(aging_config_path, 'r') as f:
-    aging_config = json.load(f)
-    print(f"[OK] Loaded aging config: {aging_config_path.name}")
+aging_config = ConfigLoader.get_aging_config()
+print(f"[OK] Loaded aging config")
 
-# Load aFRR EV weights config
-afrr_ev_config_path = config_dir / "afrr_ev_weights_config.json"
-with open(afrr_ev_config_path, 'r') as f:
-    afrr_ev_config = json.load(f)
-    print(f"[OK] Loaded aFRR EV config: {afrr_ev_config_path.name}")
+afrr_ev_config = ConfigLoader.get_afrr_ev_weights_config()
+print(f"[OK] Loaded aFRR EV config")
 
-print("\nConfiguration files loaded successfully!")
+print("\nConfiguration loaded from config/Config.yml!")
 
 # Extract solver settings
 DEFAULT_SOLVER = solver_config.get('default_solver', 'cbc')

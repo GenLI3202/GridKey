@@ -59,12 +59,10 @@ def main():
     print("[1/5] Initializing Model III and loading data...")
     print("-" * 80)
 
-    # Specify correct aging config path
-    aging_config_path = "data/p2_config/aging_config.json"
+    # Uses default ConfigLoader (loads from config/Config.yml)
     optimizer = BESSOptimizerModelIII(
         alpha=alpha,
-        use_afrr_ev_weighting=True,
-        degradation_config_path=aging_config_path
+        use_afrr_ev_weighting=True
     )
     optimizer.max_as_ratio = 0.8
 
@@ -197,10 +195,9 @@ def main():
     print(f"\n  Test 2: plot_calendar_aging_curve()")
     try:
         if has_cal_cost:
-            # Load aging config for breakpoint overlay
-            aging_config_path = Path("data/p2_config/aging_config.json")
-            with open(aging_config_path) as f:
-                aging_config = json.load(f)
+            # Load aging config from unified YAML
+            from src.utils.config_loader import ConfigLoader
+            aging_config = ConfigLoader.get_aging_config()
 
             fig_calendar = plot_calendar_aging_curve(
                 df,
@@ -233,10 +230,8 @@ def main():
     print("-" * 80)
 
     try:
-        # Load aging config
-        aging_config_path = Path("data/p2_config/aging_config.json")
-        with open(aging_config_path) as f:
-            aging_config = json.load(f)
+        # Load aging config from unified YAML
+        aging_config = ConfigLoader.get_aging_config()
 
         # Generate both plots using convenience function
         figures = plot_aging_validation_suite(

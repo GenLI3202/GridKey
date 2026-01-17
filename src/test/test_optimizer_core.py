@@ -100,14 +100,14 @@ class TestModelIIInitialization:
     """Test Model (ii) initialization and configuration loading."""
 
     def test_load_degradation_config(self):
-        """Degradation config should load and expose monotone marginal costs."""
-        optimizer = BESSOptimizerModelII(
-            degradation_config_path='data/phase2_aging_config/aging_config.json'
-        )
-        assert optimizer.degradation_params['num_segments'] == 10
-        assert len(optimizer.degradation_params['marginal_costs']) == 10
-        assert optimizer.degradation_params['marginal_costs'][0] == pytest.approx(0.0052)
-        assert optimizer.degradation_params['marginal_costs'][-1] == pytest.approx(0.0990)
+        """Degradation config should load from unified YAML and expose monotone marginal costs."""
+        # Uses default ConfigLoader (no path specified)
+        optimizer = BESSOptimizerModelII()
+        # New YAML config has 6 segments with costs [0.0087, 0.026, 0.0434, 0.0608, 0.0782, 0.0955]
+        assert optimizer.degradation_params['num_segments'] == 6
+        assert len(optimizer.degradation_params['marginal_costs']) == 6
+        assert optimizer.degradation_params['marginal_costs'][0] == pytest.approx(0.0087)
+        assert optimizer.degradation_params['marginal_costs'][-1] == pytest.approx(0.0955)
 
     def test_invalid_config_path(self):
         """Should raise FileNotFoundError for invalid config path."""
@@ -117,7 +117,8 @@ class TestModelIIInitialization:
     def test_segment_capacity_calculation(self):
         """Segment capacity should be total capacity divided by number of segments."""
         optimizer = BESSOptimizerModelII()
-        expected_seg_cap = 4472 / 10
+        # With 6 segments in new YAML config
+        expected_seg_cap = 4500 / 6  # battery_params['capacity_kwh'] = 4500
         assert optimizer.degradation_params['segment_capacity_kwh'] == pytest.approx(expected_seg_cap)
 
     def test_cost_sum_equals_full_cycle_cost(self):
@@ -126,7 +127,9 @@ class TestModelIIInitialization:
         costs = optimizer.degradation_params['marginal_costs']
         seg_cap = optimizer.degradation_params['segment_capacity_kwh']
         total_cost = sum(costs) * seg_cap
-        expected_cost = 232.92  # EUR per full cycle
+        # With 6 segments: [0.0087, 0.026, 0.0434, 0.0608, 0.0782, 0.0955]
+        # Sum = 0.3126, seg_cap = 750 kWh, total = 234.45 EUR
+        expected_cost = sum([0.0087, 0.026, 0.0434, 0.0608, 0.0782, 0.0955]) * (4500 / 6)
         assert total_cost == pytest.approx(expected_cost, rel=0.01)
 
 

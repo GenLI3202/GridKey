@@ -115,11 +115,9 @@ print("\n" + "=" * 80)
 print("[SECTION 3] DATA LOADING")
 print("=" * 80)
 
-# Load MPC configuration
-config_dir = project_root / "data" / "p2_config"
-mpc_config_path = config_dir / "mpc_config.json"
-with open(mpc_config_path, 'r') as f:
-    base_mpc_config = json.load(f)
+# Load MPC configuration from unified YAML config
+from src.utils.config_loader import ConfigLoader
+base_mpc_config = ConfigLoader.get_mpc_config()
 
 # Load market data (preprocessed for speed)
 print(f"\n[LOADING] Market data for {COUNTRY}...")

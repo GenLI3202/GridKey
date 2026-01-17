@@ -839,19 +839,28 @@ def save_preprocessed_country_data(
     Args:
         market_tables: Dict from load_phase2_market_tables()
         output_dir: Output directory for preprocessed files
-        afrr_ev_weights_config_path: Optional path to aFRR EV weights config JSON
+        afrr_ev_weights_config_path: Optional path to aFRR EV weights config JSON.
+                                     If None, loads from unified config/Config.yml
     """
     import logging
     import json
 
     logger = logging.getLogger(__name__)
 
-    # Load aFRR EV weights config if provided
+    # Load aFRR EV weights config: from explicit path or unified YAML config
     afrr_ev_config = None
     if afrr_ev_weights_config_path and afrr_ev_weights_config_path.exists():
         with open(afrr_ev_weights_config_path, 'r') as f:
             afrr_ev_config = json.load(f)
         logger.info(f"Loaded aFRR EV weights from {afrr_ev_weights_config_path}")
+    else:
+        # Load from unified YAML config
+        try:
+            from src.utils.config_loader import ConfigLoader
+            afrr_ev_config = ConfigLoader.get_afrr_ev_weights_config()
+            logger.info("Loaded aFRR EV weights from config/Config.yml")
+        except Exception as e:
+            logger.warning(f"Failed to load aFRR EV weights config: {e}")
 
     # Create output directory
     output_dir = Path(output_dir)

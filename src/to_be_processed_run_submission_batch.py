@@ -123,19 +123,16 @@ ENABLE_CROSS_MARKET_EXCLUSIVITY = True
 GENERATE_COMPETITION_CSV = True  # Generate 3 CSV files for competition submission
 SKIP_CSV_EXPORT = False  # Set to True to skip CSV generation (faster testing)
 
-# MPC settings (load from config)
-config_dir = project_root / "data" / "p2_config"
-with open(config_dir / "mpc_config.json", 'r') as f:
-    mpc_config = json.load(f)
+# MPC settings (load from unified YAML config)
+from src.utils.config_loader import ConfigLoader
 
+mpc_config = ConfigLoader.get_mpc_config()
 HORIZON_HOURS = mpc_config['mpc_parameters']['horizon_hours']
 EXECUTION_HOURS = mpc_config['mpc_parameters']['execution_hours']
 VALIDATE_CONSTRAINTS = False  # Disable for speed
 
 # Solver settings
-with open(config_dir / "solver_config.json", 'r') as f:
-    solver_config = json.load(f)
-
+solver_config = ConfigLoader.get_solver_config()
 DEFAULT_SOLVER = solver_config.get('default_solver', 'gurobi')
 DEFAULT_SOLVER_TIME_LIMIT = solver_config.get('solver_time_limit_sec', 900)
 

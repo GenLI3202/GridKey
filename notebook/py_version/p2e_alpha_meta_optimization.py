@@ -161,14 +161,11 @@ print(f"  - Estimated speedup: ~{N_JOBS}x")
 # MPC Configuration
 # ============================================================================
 
-# Load MPC configuration files
-config_dir = project_root / "data" / "p2_config"
+# Load MPC configuration from unified YAML config
+from src.utils.config_loader import ConfigLoader
 
-# Load MPC config
-mpc_config_path = config_dir / "mpc_config.json"
-with open(mpc_config_path, 'r') as f:
-    base_mpc_config = json.load(f)
-    print(f"\n[OK] Loaded base MPC config: {mpc_config_path.name}")
+base_mpc_config = ConfigLoader.get_mpc_config()
+print(f"\n[OK] Loaded base MPC config from config/Config.yml")
 
 # Extract MPC horizon settings
 planning_horizon_hours = base_mpc_config.get("planning_horizon_hours", 36)
