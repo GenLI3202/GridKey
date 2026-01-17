@@ -60,7 +60,7 @@ SoloGen_Phase2_Submission/output
 *.fdb_latexmk
 
 # Local editor settings (do not track personal MCP config)
-.vscode/mcp.json
+.vscode
 
 # System/crash files
 nul
