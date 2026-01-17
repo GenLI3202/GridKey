@@ -1,6 +1,6 @@
 afrr_ev_weights_config:
   description: aFRR energy activation probabilities for Expected Value (EV) weighting
-  version: 2.0-2024-Nov-11
+  version: 2.0-2026-Jan-17
   reference: Derived from data/phase2_processed/metadata.json (zero_pct statistics)
   data_source: TechArena2025 Phase 2 aFRR energy price data (2024 full year)
   impact_analysis:
@@ -83,7 +83,7 @@ afrr_ev_weights_config:
   usage_notes:
   - EV weighting is OPTIONAL - disable for conservative bidding (w=1.0)
   - Enable for more realistic profit estimation and market allocation
-  - "Lower w values \u2192 model bids more aggressively to aFRR-E (compensates for low activation)"
+  - "Lower w values -> model bids more aggressively to aFRR-E (compensates for low activation)"
   - Compare results with/without EV weighting using compare_ev_weighting.py
   time_varying:
     enabled: false
