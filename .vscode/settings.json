@@ -1,7 +1,4 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.pythonProjects": [],
-    "python-envs.defaultPackageManager": "ms-python.python:conda",
-    "python.defaultInterpreterPath": "C:\\Users\\ge75pax\\Anaconda3\\envs\\bess_ems\\python.exe",
-
+    "python.defaultInterpreterPath": "C:\\Users\\lg897\\miniconda3\\envs\\gridkey\\python.exe",
+    "python.terminal.activateEnvironment": true
 }
