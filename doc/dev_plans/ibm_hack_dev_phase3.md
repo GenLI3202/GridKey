@@ -1,6 +1,6 @@
 ### Phase 3: Service Layer (Sequential)
 
-This component is the **critical path** — it depends on both Phase 1 and Phase 2. Details refer to [ibm_hack_dev_phase3.md](ibm_hack_dev_phase3.md).
+This component is the **critical path** — it depends on both Phase 1 and Phase 2.
 
 ---
 
@@ -8,7 +8,7 @@ This component is the **critical path** — it depends on both Phase 1 and Phase
 
 Location: `src/service/optimizer_service.py`
 
-**Depends on:**`models.py` (1.1), `adapter.py` (2.2), `BESSOptimizerModelIII-renewables` (2.1)
+**Depends on:** `models.py` (1.1), `adapter.py` (2.2), `BESSOptimizerModelIIIRenew` (2.1)
 
 ##### File Structure
 
@@ -127,7 +127,7 @@ classOptimizerService:
 
             generation_forecast: Renewable forecast from Weather Service (optional)
 
-            model_type: "I", "II", "III", or "III-renewables"
+            model_type: "I", "II", "III", or "III-renew"
 
             c_rate: Battery C-rate (0.25, 0.33, 0.5)
 
@@ -261,7 +261,7 @@ classOptimizerService:
 
                 self._optimizer_cache[cache_key] = BESSOptimizerModelII(alpha=alpha)
 
-            elif model_type in ("III", "III-renewables"):
+            elif model_type in ("III", "III-renew"):
 
                 self._optimizer_cache[cache_key] = BESSOptimizerModelIII(alpha=alpha)
 

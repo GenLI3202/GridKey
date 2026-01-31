@@ -1,20 +1,20 @@
 ### Phase 2: Core Implementation (Parallel After Phase 1)
 
-These components depend on **Phase 1** but can be implemented **in parallel with each other**. Details refer to [ibm_hack_dev_phase2.md](ibm_hack_dev_phase2.md).
+These components depend on **Phase 1** but can be implemented **in parallel with each other**.
 
 ---
 
-#### 2.1 [NEW] BESSOptimizerModelIII-renewables — Renewable Integration
+#### 2.1 [NEW] BESSOptimizerModelIIIRenew — Renewable Integration
 
 Location: `src/core/optimizer.py` (extend existing file)
 
 **Depends on:** LaTeX formulation (1.2)
 
-Create a new class `BESSOptimizerModelIIIRenewables` that extends `BESSOptimizerModelIII`:
+Create a new class `BESSOptimizerModelIIIRenew` that extends `BESSOptimizerModelIII`:
 
 ```python
 
-classBESSOptimizerModelIIIRenewables(BESSOptimizerModelIII):
+class BESSOptimizerModelIIIRenew(BESSOptimizerModelIII):
 
     """
 

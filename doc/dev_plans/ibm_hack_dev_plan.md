@@ -69,17 +69,21 @@ GridKey/
 
 ## 3. Proposed Changes (By Implementation Phase)
 
-> This section is organized according to the [Implementation Flow & Dependencies](#8-implementation-flow--dependencies) diagram.
+> This section is organized according to the [Implementation Flow & Dependencies](#7-implementation-flow--dependencies) diagram.
 
 ### Phase 1: Foundation (Parallel Tasks)
 
 These components have **no dependencies** and can be implemented simultaneously. Details refer to [ibm_hack_dev_phase1.md](ibm_hack_dev_phase1.md).
 
+📝 **Test:** `test_models.py` — Pydantic validation
 
+---
 
 ### Phase 2: Core Implementation (Parallel After Phase 1)
 
 These components depend on **Phase 1** but can be implemented **in parallel with each other**. Details refer to [ibm_hack_dev_phase2.md](ibm_hack_dev_phase2.md).
+
+📝 **Test:** `test_adapter.py`, `test_renewable_model.py` — DataAdapter, MILP constraints
 
 ---
 
@@ -87,264 +91,72 @@ These components depend on **Phase 1** but can be implemented **in parallel with
 
 This component is the **critical path** — it depends on both Phase 1 and Phase 2. Details refer to [ibm_hack_dev_phase3.md](ibm_hack_dev_phase3.md).
 
----
+📝 **Test:** `test_optimizer_service.py` — End-to-end workflow
 
+---
 
 ### Phase 4: Deployment (Parallel After Phase 3)
 
 These components depend on **Phase 3** but can be implemented **in parallel with each other**. Details refer to [ibm_hack_dev_phase4.md](ibm_hack_dev_phase4.md).
 
----
+📝 **Test:** Integration tests, Docker tests — API endpoints, container
 
-#### 4.1 [NEW] Dockerfile — Container Configuration
-
-Location: `GridKey/Dockerfile`
-
-**Depends on:** `optimizer_service.py` (3.1)
-
-```dockerfile
-# GridKey Optimizer Service - Production Docker Image
-FROM python:3.11-slim
-
-# Metadata
-LABEL maintainer="GridKey Team"
-LABEL version="1.0"
-LABEL description="BESS Optimizer Service with Renewable Integration"
-
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies for solvers
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements first (for layer caching)
-COPY requirements.txt requirements-api.txt ./
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir -r requirements-api.txt
-
-# Copy application code
-COPY src/ ./src/
-COPY config/ ./config/
-COPY data/ ./data/
-
-# Set Python path
-ENV PYTHONPATH=/app
-
-# Expose API port
-EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-# Run FastAPI server
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
+Contents:
+- **4.1** Dockerfile — Container Configuration
+- **4.2** FastAPI main.py — API Endpoints  
+- **4.3** API Input/Output Format Specification
+- **4.4** GitHub Actions CI Workflow
+- **4.5** Integration Tests
 
 ---
 
-#### 4.2 [NEW] FastAPI main.py — API Endpoints
+## 4. Verification Strategy
 
-Location: `src/api/main.py`
+> **Key Principle:** Tests should be written alongside implementation in each phase, not deferred to the end.
 
-**Depends on:** `optimizer_service.py` (3.1)
+### 4.1 Per-Phase Testing
 
-> **Note:** API endpoint implementation is detailed in [Section 4: API Input/Output Format Specification](#4-api-inputoutput-format-specification).
+| Phase | Test Files | Scope |
+|-------|------------|-------|
+| Phase 1 | `test_models.py` | Pydantic model validation, serialization |
+| Phase 2 | `test_adapter.py`, `test_renewable_model.py` | DataAdapter conversion, MILP constraint correctness |
+| Phase 3 | `test_optimizer_service.py` | End-to-end service workflow |
+| Phase 4 | Integration tests, Docker tests | API endpoints, container deployment |
 
----
+### 4.2 GitHub Actions CI
 
-#### 4.3 [NEW] Unit Tests
+> **NEW:** Add automated CI/CD pipeline to run tests on every commit/PR.
 
-Location: `src/test/`
+Location: `.github/workflows/test.yml`
 
-**Depends on:** `models.py` (1.1), `BESSOptimizerModelIII-renewables` (2.1)
+> Full workflow configuration (including Docker build job) is documented in [ibm_hack_dev_phase4.md](ibm_hack_dev_phase4.md#44-new-github-actions-ci-workflow).
 
-> **Note:** Test files and commands are detailed in [Section 5: Verification Plan](#5-verification-plan).
-
----
-
-## 4. API Input/Output Format Specification
-
-### 4.1 Optimize Endpoint
-
-**Endpoint:** `POST /api/v1/optimize`
-
-#### Request Body (JSON)
-
-```json
-{
-  "location": "Munich",
-  "country": "DE_LU",
-  "model_type": "III",
-  "c_rate": 0.5,
-  "alpha": 1.0,
-  "time_horizon_hours": 48,
-  
-  "market_prices": {
-    "da_prices": [39.91, -0.04, -9.01, "..."],
-    "fcr_prices": [114.8, 104.4, 68.8, "..."],
-    "afrr_capacity_pos": [6.33, 4.12, "..."],
-    "afrr_capacity_neg": [13.07, 15.02, "..."],
-    "afrr_energy_pos": [50.34, 46.94, "..."],
-    "afrr_energy_neg": [29.70, 40.87, "..."]
-  },
-  
-  "renewable_generation": [0, 0, 0, 10.5, 25.3, 45.2, "..."]
-}
-```
-
-#### Response Body (JSON)
-
-```json
-{
-  "status": "success",
-  "data": {
-    "objective_value": 1847.52,
-    "net_profit": 1523.18,
-  
-    "revenue_breakdown": {
-      "day_ahead": 892.45,
-      "fcr": 324.80,
-      "afrr_capacity": 456.12,
-      "afrr_energy": 98.33,
-      "renewable_export": 75.82
-    },
-  
-    "degradation_cost": 324.34,
-    "cyclic_aging_cost": 287.12,
-    "calendar_aging_cost": 37.22,
-  
-    "renewable_utilization": {
-      "total_generation_kwh": 185.5,
-      "self_consumption_kwh": 92.3,
-      "export_kwh": 85.7,
-      "curtailment_kwh": 7.5,
-      "utilization_rate": 0.96
-    },
-  
-    "schedule": [
-      {
-        "timestamp": "2024-01-01T00:00:00",
-        "action": "charge",
-        "power_kw": 1500.0,
-        "market": "da",
-        "renewable_action": null,
-        "renewable_power_kw": 0,
-        "soc_after": 0.58
-      }
-    ],
-  
-    "soc_trajectory": [0.50, 0.58, 0.67, "..."],
-  
-    "solve_time_seconds": 12.45,
-    "solver_name": "highs",
-    "model_type": "III",
-    "num_variables": 15234,
-    "num_constraints": 28456
-  }
-}
-```
-
-### 4.2 Health Check Endpoint
-
-**Endpoint:** `GET /health`
-
-```json
-{
-  "status": "healthy",
-  "version": "1.0.0",
-  "solver_available": "highs",
-  "timestamp": "2024-01-01T12:00:00Z"
-}
-```
-
----
-
-## 5. Verification Plan
-
-### 5.1 Unit Tests
-
-> **Important:** The project currently lacks comprehensive unit tests for the service layer. New tests need to be created.
-
-#### New Test Files to Create
-
-| Test File                              | Covers                        | Priority |
-| -------------------------------------- | ----------------------------- | -------- |
-| `src/test/test_models.py`            | Pydantic model validation     | P0       |
-| `src/test/test_adapter.py`           | DataAdapter conversion logic  | P0       |
-| `src/test/test_optimizer_service.py` | OptimizerService workflow     | P0       |
-| `src/test/test_renewable_model.py`   | Renewable constraints in MILP | P1       |
-
-#### Test Commands
+### 4.3 Test Commands
 
 ```bash
 # Run all tests
 pytest src/test/ -v
 
-# Run specific test file
-pytest src/test/test_models.py -v
+# Run phase-specific tests
+pytest src/test/test_models.py -v        # Phase 1
+pytest src/test/test_adapter.py -v       # Phase 2
+pytest src/test/test_optimizer_service.py -v  # Phase 3
 
 # Run with coverage
 pytest src/test/ --cov=src/service --cov-report=html
 ```
 
-### 5.2 Integration Tests
+### 4.4 Integration Tests (Phase 4)
 
-#### Test Optimization Flow
+> Detailed integration tests (Docker container tests, API tests, synthetic data fixtures) are documented in [ibm_hack_dev_phase4.md](ibm_hack_dev_phase4.md#45-integration-tests).
 
-```bash
-# Run existing validation script (modified for new service)
-python src/validation/run_optimization.py --model III --country DE_LU --hours 24
-```
+### 4.5 Manual Verification Checklist
 
-#### Test Docker Container
-
-```bash
-# Build image
-docker build -t gridkey-optimizer:latest .
-
-# Run container
-docker run -d -p 8000:8000 --name gridkey-opt gridkey-optimizer:latest
-
-# Test health endpoint
-curl http://localhost:8000/health
-
-# Test optimize endpoint
-curl -X POST http://localhost:8000/api/v1/optimize \
-  -H "Content-Type: application/json" \
-  -d '{"country": "DE_LU", "model_type": "III", "time_horizon_hours": 24}'
-
-# Cleanup
-docker stop gridkey-opt && docker rm gridkey-opt
-```
-
-### 5.3 Manual Verification
-
-> **Note:** The following manual tests should be performed after implementation.
-
-1. **Renewable Balance Verification**
-
-   - Load a scenario with known renewable generation
-   - Verify: `P_self + P_export + P_curtail = P_renewable` for all timesteps
-   - Check: Export revenue appears in `revenue_breakdown`
-2. **API Response Validation**
-
-   - Send request via Postman/curl
-   - Verify JSON schema matches specification in Section 4
-   - Check all required fields are present and correctly typed
-3. **Docker Deployment Test**
-
-   - Build and run container on a clean machine
-   - Verify solver (HiGHS) is functional inside container
-   - Test with 48-hour optimization (should complete within 60 seconds)
+> See [Phase 4 Verification Checklist](ibm_hack_dev_phase4.md#verification-checklist-phase-4) for the complete checklist.
 
 ---
 
-## 6. Risk Assessment
+## 5. Risk Assessment
 
 | Risk                                                   | Impact | Mitigation                                                  |
 | ------------------------------------------------------ | ------ | ----------------------------------------------------------- |
@@ -355,17 +167,19 @@ docker stop gridkey-opt && docker rm gridkey-opt
 
 ---
 
-## 7. Open Questions for User
+## 6. Design Decisions (Resolved)
 
-1. **Model Naming:** Should the renewable-enabled model be called `Model IV` or `BESSOptimizerWithRenewables`?
-2. **API Framework:** The blueprint specifies FastAPI. Is this confirmed, or should we consider alternatives (e.g., Flask)?
-3. **Renewable Constraints:** The blueprint specifies "no curtailment penalty". Should we add an optional penalty parameter for future flexibility?
-4. **Docker Base Image:** Should we use `python:3.11-slim` or a solver-optimized image?
-5. **Test Data:** Are there existing renewable generation datasets to use for testing, or should we generate synthetic data?
+| Question | Decision |
+|----------|----------|
+| **Model Naming** | `Model III-renew` (class: `BESSOptimizerModelIIIRenew`) |
+| **API Framework** | FastAPI (confirmed) |
+| **Curtailment Penalty** | ✅ Add optional `curtailment_penalty` parameter for future flexibility |
+| **Docker Base Image** | Solver-optimized image (not `python:3.11-slim`) |
+| **Test Data** | Generate synthetic renewable generation data |
 
 ---
 
-## 8. Implementation Flow & Dependencies
+## 7. Implementation Flow & Dependencies
 
 The following diagram shows which modules can be implemented in **parallel** vs. **sequentially**:
 
@@ -375,25 +189,30 @@ flowchart TB
         A1["models.py<br/>Pydantic data models"]
         A2["Renewable Math Doc<br/>(LaTeX formulation)"]
         A3["requirements-api.txt<br/>API dependencies"]
+        A1T["test_models.py"]
     end
 
     subgraph Phase2["Phase 2: Core Implementation"]
         direction TB
-        B1["BESSOptimizerModelIII-renewables<br/>(extends Model III)"]
+        B1["BESSOptimizerModelIIIRenew<br/>(extends Model III)"]
         B2["adapter.py<br/>DataAdapter class"]
+        B1T["test_renewable_model.py"]
+        B2T["test_adapter.py"]
     end
 
     subgraph Phase3["Phase 3: Service Layer (Sequential)"]
         C1["optimizer_service.py<br/>OptimizerService class"]
+        C1T["test_optimizer_service.py"]
     end
 
     subgraph Phase4["Phase 4: Deployment (Parallel)"]
         D1["Dockerfile<br/>Container config"]
         D2["FastAPI main.py<br/>API endpoints"]
-        D3["Unit Tests<br/>test_*.py"]
+        D3["GitHub Actions CI<br/>.github/workflows/test.yml"]
+        D4["Integration Tests"]
     end
 
-    %% Dependencies
+    %% Implementation Dependencies
     A1 --> B2
     A1 --> C1
     A2 --> B1
@@ -401,23 +220,28 @@ flowchart TB
     B2 --> C1
     C1 --> D1
     C1 --> D2
-    A1 --> D3
-    B1 --> D3
+    
+    %% Test Dependencies (per-phase)
+    A1 --> A1T
+    B1 --> B1T
+    B2 --> B2T
+    C1 --> C1T
+    D2 --> D4
 ```
 
 ### Dependency Summary
 
-| Module | Depends On | Can Parallel With |
-|--------|------------|-------------------|
-| `models.py` | None | `requirements-api.txt`, LaTeX doc |
-| LaTeX formulation | None | `models.py`, `requirements-api.txt` |
-| `requirements-api.txt` | None | `models.py`, LaTeX doc |
-| `BESSOptimizerModelIII-renewables` | LaTeX formulation | `adapter.py` |
-| `adapter.py` | `models.py` | `BESSOptimizerModelIII-renewables` |
-| `optimizer_service.py` | `models.py`, `adapter.py`, Optimizer | ❌ Sequential |
-| `Dockerfile` | `optimizer_service.py` | `main.py`, Tests |
-| `main.py` (API) | `optimizer_service.py` | `Dockerfile`, Tests |
-| Unit Tests | `models.py`, Optimizer | `Dockerfile`, `main.py` |
+| Module | Depends On | Tests Written |
+|--------|------------|---------------|
+| `models.py` | None | `test_models.py` (Phase 1) |
+| LaTeX formulation | None | N/A (documentation) |
+| `requirements-api.txt` | None | N/A |
+| `BESSOptimizerModelIIIRenew` | LaTeX formulation | `test_renewable_model.py` (Phase 2) |
+| `adapter.py` | `models.py` | `test_adapter.py` (Phase 2) |
+| `optimizer_service.py` | `models.py`, `adapter.py`, Optimizer | `test_optimizer_service.py` (Phase 3) |
+| `Dockerfile` | `optimizer_service.py` | Docker integration tests (Phase 4) |
+| `main.py` (API) | `optimizer_service.py` | API integration tests (Phase 4) |
+| GitHub Actions CI | All tests | Runs automatically on commit/PR |
 
 ---
 

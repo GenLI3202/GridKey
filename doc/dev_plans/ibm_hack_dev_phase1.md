@@ -29,7 +29,7 @@ classModelType(str, Enum):
 
     MODEL_III = "III"
 
-    MODEL_III_RENEWABLES = "III-renewables"  # Model III + Renewable Integration
+    MODEL_III_RENEW = "III-renew"  # Model III + Renewable Integration
 
 
 classOptimizationInput(BaseModel):
