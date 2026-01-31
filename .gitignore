@@ -37,7 +37,9 @@ submission_results/
 
 # Large notebook files with embedded outputs
 # notebook/final_validation.ipynb
-**/doc/Literature
+
+# PDF literature
+doc/literature/*.pdf
 
 # ZIP archives
 *.zip
