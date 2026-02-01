@@ -283,3 +283,50 @@ data/optimizer_input_template_request_only.json
 **重要：** 旧格式是 pandas DataFrame 导出格式，用于内部数据传递。新格式是 FastAPI 的标准 JSON 请求格式。
 
 如果需要保留旧格式支持，可以在 API 层添加转换逻辑。当前版本仅支持新格式。
+
+---
+
+## API 响应格式
+
+### 响应模板文件
+
+| 文件 | 用途 |
+|------|------|
+| `api_response_template.json` | API 响应示例 (可用于测试) |
+| `API_RESPONSE_FORMAT.md` | 完整响应格式文档 |
+
+### 响应结构概览
+
+```json
+{
+    "status": "success",
+    "data": {
+        "objective_value": 450.0,
+        "net_profit": 425.0,
+        "revenue_breakdown": {"da": 350.0, "afrr_energy": 80.0, "fcr": 20.0},
+        "degradation_cost": 25.0,
+        "schedule": [{"timestamp": "...", "action": "charge", "power_kw": 1500.0, "soc_after": 0.55}],
+        "soc_trajectory": [0.5, 0.55, 0.60, ...],
+        "renewable_utilization": {...},
+        "solve_time_seconds": 0.523,
+        "solver_name": "highs",
+        "model_type": "III-renew",
+        "status": "optimal"
+    }
+}
+```
+
+详细字段说明请参考 `API_RESPONSE_FORMAT.md`。
+
+---
+
+## 文件清单
+
+| 文件 | 类型 | 用途 |
+|------|------|------|
+| `optimizer_input_template.json` | 输入模板 | API 请求示例 (可直接使用) |
+| `api_response_template.json` | 输出模板 | API 响应示例 |
+| `API_FORMAT_MIGRATION_GUIDE.md` | 文档 | 输入格式迁移说明 |
+| `API_RESPONSE_FORMAT.md` | 文档 | 输出格式完整说明 |
+| `optimizer_output_template.json` | 内部格式 | 求解器详细输出 (调试用) |
+| `optimizer_input_template_request_only.json` | 输入模板 | 纯净版本 (无元数据) |

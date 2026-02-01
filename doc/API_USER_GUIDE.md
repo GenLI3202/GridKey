@@ -97,11 +97,11 @@ docker run -p 8000:8000 gridkey-optimizer
 
 ### Service Access
 
-| Resource | URL |
-|----------|-----|
-| API Documentation (Swagger UI) | http://localhost:8000/docs |
-| API Documentation (ReDoc) | http://localhost:8000/redoc |
-| Health Check | http://localhost:8000/health |
+| Resource                       | URL                          |
+| ------------------------------ | ---------------------------- |
+| API Documentation (Swagger UI) | http://localhost:8000/docs   |
+| API Documentation (ReDoc)      | http://localhost:8000/redoc  |
+| Health Check                   | http://localhost:8000/health |
 
 ---
 
@@ -116,6 +116,7 @@ GET /health
 ```
 
 **Response:**
+
 ```json
 {
     "status": "healthy",
@@ -138,6 +139,7 @@ POST /api/v1/optimize
 ```
 
 **Request Body:**
+
 ```json
 {
     "location": "Munich",
@@ -160,6 +162,7 @@ POST /api/v1/optimize
 ```
 
 **Response:**
+
 ```json
 {
     "status": "success",
@@ -201,6 +204,7 @@ POST /api/v1/optimize-mpc
 ```
 
 **Strategy:**
+
 - Iteration 1: Optimize [0h-6h], commit [0h-4h]
 - Iteration 2: Optimize [4h-10h], commit [4h-8h]
 - Iteration 3: Optimize [8h-12h], commit [8h-12h]
@@ -208,6 +212,7 @@ POST /api/v1/optimize-mpc
 **Estimated Time:** 15-20 seconds (3 iterations × ~5 sec each)
 
 **Request Body:**
+
 ```json
 {
     "model_type": "III",
@@ -231,41 +236,41 @@ POST /api/v1/optimize-mpc
 
 ### Request Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `location` | string | "Munich" | Location name |
-| `country` | string | "DE_LU" | Country code |
-| `model_type` | string | "III" | "I", "II", "III", or "III-renew" |
-| `c_rate` | float | 0.5 | Battery C-rate (0.25, 0.33, 0.5) |
-| `alpha` | float | 1.0 | Degradation cost weight |
-| `daily_cycle_limit` | float | 1.0 | Max daily cycles |
-| `time_horizon_hours` | int | 6 | Optimization horizon (1-12) |
-| `market_prices` | object | Required | Price data (see below) |
-| `renewable_generation` | array | Optional | Generation forecast (kW) |
+| Parameter                | Type   | Default  | Description                      |
+| ------------------------ | ------ | -------- | -------------------------------- |
+| `location`             | string | "Munich" | Location name                    |
+| `country`              | string | "DE_LU"  | Country code                     |
+| `model_type`           | string | "III"    | "I", "II", "III", or "III-renew" |
+| `c_rate`               | float  | 0.5      | Battery C-rate (0.25, 0.33, 0.5) |
+| `alpha`                | float  | 1.0      | Degradation cost weight          |
+| `daily_cycle_limit`    | float  | 1.0      | Max daily cycles                 |
+| `time_horizon_hours`   | int    | 6        | Optimization horizon (1-12)      |
+| `market_prices`        | object | Required | Price data (see below)           |
+| `renewable_generation` | array  | Optional | Generation forecast (kW)         |
 
 ### Market Prices Structure
 
-| Field | Resolution | Description |
-|-------|------------|-------------|
-| `day_ahead` | 15-min | Day-ahead energy prices (EUR/MWh) |
-| `afrr_energy_pos` | 15-min | aFRR+ energy prices (EUR/MWh) |
-| `afrr_energy_neg` | 15-min | aFRR- energy prices (EUR/MWh) |
-| `fcr` | 4-hour blocks | FCR capacity prices (EUR/MW) |
-| `afrr_capacity_pos` | 4-hour blocks | aFRR+ capacity prices (EUR/MW) |
-| `afrr_capacity_neg` | 4-hour blocks | aFRR- capacity prices (EUR/MW) |
+| Field                 | Resolution    | Description                       |
+| --------------------- | ------------- | --------------------------------- |
+| `day_ahead`         | 15-min        | Day-ahead energy prices (EUR/MWh) |
+| `afrr_energy_pos`   | 15-min        | aFRR+ energy prices (EUR/MWh)     |
+| `afrr_energy_neg`   | 15-min        | aFRR- energy prices (EUR/MWh)     |
+| `fcr`               | 4-hour blocks | FCR capacity prices (EUR/MW)      |
+| `afrr_capacity_pos` | 4-hour blocks | aFRR+ capacity prices (EUR/MW)    |
+| `afrr_capacity_neg` | 4-hour blocks | aFRR- capacity prices (EUR/MW)    |
 
 ### Response Fields
 
-| Field | Description |
-|-------|-------------|
-| `objective_value` | Raw objective function value |
-| `net_profit` | Profit after degradation costs |
-| `revenue_breakdown` | Revenue by market (da, afrr_energy, fcr) |
-| `degradation_cost` | Total degradation cost |
-| `schedule` | Array of per-timestep actions |
-| `soc_trajectory` | Normalized SOC values [0, 1] |
-| `solve_time_seconds` | Solver execution time |
-| `solver_name` | Solver used (highs, cplex, gurobi) |
+| Field                  | Description                              |
+| ---------------------- | ---------------------------------------- |
+| `objective_value`    | Raw objective function value             |
+| `net_profit`         | Profit after degradation costs           |
+| `revenue_breakdown`  | Revenue by market (da, afrr_energy, fcr) |
+| `degradation_cost`   | Total degradation cost                   |
+| `schedule`           | Array of per-timestep actions            |
+| `soc_trajectory`     | Normalized SOC values [0, 1]             |
+| `solve_time_seconds` | Solver execution time                    |
+| `solver_name`        | Solver used (highs, cplex, gurobi)       |
 
 ---
 
@@ -363,27 +368,27 @@ print(f"Schedule Length: {len(result['data']['schedule'])} timesteps")
 ### Time Horizon vs Data Length
 
 | Time Horizon | 15-min Prices | 4-hour Block Prices |
-|--------------|---------------|---------------------|
-| 1 hour | 4 values | 1 block |
-| 6 hours | 24 values | 2 blocks |
-| 12 hours | 48 values | 3 blocks |
+| ------------ | ------------- | ------------------- |
+| 1 hour       | 4 values      | 1 block             |
+| 6 hours      | 24 values     | 2 blocks            |
+| 12 hours     | 48 values     | 3 blocks            |
 
 ### Model Types
 
-| model_type | Description | Use Case |
-|------------|-------------|----------|
-| `"I"` | Base 4-market model | Fastest, no degradation |
-| `"II"` | + Cyclic aging cost | Cycle-focused degradation |
-| `"III"` | + Calendar aging cost | Full degradation (recommended) |
-| `"III-renew"` | + Renewable integration | With solar/wind generation |
+| model_type      | Description             | Use Case                       |
+| --------------- | ----------------------- | ------------------------------ |
+| `"I"`         | Base 4-market model     | Fastest, no degradation        |
+| `"II"`        | + Cyclic aging cost     | Cycle-focused degradation      |
+| `"III"`       | + Calendar aging cost   | Full degradation (recommended) |
+| `"III-renew"` | + Renewable integration | With solar/wind generation     |
 
 ### C-Rate Options
 
-| C-Rate | Max Power (4472 kWh) | Description |
-|--------|---------------------|-------------|
-| 0.25 | 1118 kW | Conservative |
-| 0.33 | 1492 kW | Moderate |
-| 0.5 | 2236 kW | Aggressive (default) |
+| C-Rate | Max Power (4472 kWh) | Description          |
+| ------ | -------------------- | -------------------- |
+| 0.25   | 1118 kW              | Conservative         |
+| 0.33   | 1492 kW              | Moderate             |
+| 0.5    | 2236 kW              | Aggressive (default) |
 
 ---
 
@@ -391,11 +396,11 @@ print(f"Schedule Length: {len(result['data']['schedule'])} timesteps")
 
 ### HTTP Status Codes
 
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 400 | Bad Request (validation error) |
-| 500 | Internal Server Error |
+| Code | Description                    |
+| ---- | ------------------------------ |
+| 200  | Success                        |
+| 400  | Bad Request (validation error) |
+| 500  | Internal Server Error          |
 
 ### Example Error Response
 
@@ -407,22 +412,22 @@ print(f"Schedule Length: {len(result['data']['schedule'])} timesteps")
 
 ### Common Errors
 
-| Error | Solution |
-|-------|----------|
-| Missing `market_prices` | Include all 6 price arrays |
-| Wrong array length | Match data length to time_horizon_hours |
-| Invalid `model_type` | Use "I", "II", "III", or "III-renew" |
-| Horizon too long | Use MPC endpoint for 12h, or reduce horizon |
+| Error                     | Solution                                    |
+| ------------------------- | ------------------------------------------- |
+| Missing `market_prices` | Include all 6 price arrays                  |
+| Wrong array length        | Match data length to time_horizon_hours     |
+| Invalid `model_type`    | Use "I", "II", "III", or "III-renew"        |
+| Horizon too long          | Use MPC endpoint for 12h, or reduce horizon |
 
 ---
 
 ## Performance Benchmarks
 
-| Operation | Estimated Time |
-|-----------|----------------|
-| 6h optimization (HiGHS) | ~5 seconds |
-| 12h MPC (3 iterations) | ~15-20 seconds |
-| API overhead | +1-2 seconds |
+| Operation               | Estimated Time |
+| ----------------------- | -------------- |
+| 6h optimization (HiGHS) | ~5 seconds     |
+| 12h MPC (3 iterations)  | ~15-20 seconds |
+| API overhead            | +1-2 seconds   |
 
 ---
 
@@ -431,15 +436,12 @@ print(f"Schedule Length: {len(result['data']['schedule'])} timesteps")
 Use Swagger UI for interactive API exploration:
 
 1. **Start service:**
+
    - Windows: `uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload`
    - Or: `.\startup.ps1 dev`
-
 2. **Open browser:** http://localhost:8000/docs
-
 3. Click **Try it out** on any endpoint
-
 4. Fill in request body
-
 5. Click **Execute**
 
 ---

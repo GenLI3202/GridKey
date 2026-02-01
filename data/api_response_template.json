@@ -1,0 +1,69 @@
+{
+    "status": "success",
+    "data": {
+        "objective_value": 450.0,
+        "net_profit": 425.0,
+        "revenue_breakdown": {
+            "da": 350.0,
+            "afrr_energy": 80.0,
+            "fcr": 20.0,
+            "afrr_capacity": 0.0
+        },
+        "degradation_cost": 25.0,
+        "cyclic_aging_cost": 15.0,
+        "calendar_aging_cost": 10.0,
+        "schedule": [
+            {
+                "timestamp": "2024-01-01T00:00:00",
+                "action": "idle",
+                "power_kw": 0.0,
+                "market": "da",
+                "soc_after": 0.5
+            },
+            {
+                "timestamp": "2024-01-01T00:15:00",
+                "action": "discharge",
+                "power_kw": 2236.0,
+                "market": "da",
+                "soc_after": 0.25
+            },
+            {
+                "timestamp": "2024-01-01T00:30:00",
+                "action": "discharge",
+                "power_kw": 2236.0,
+                "market": "da",
+                "soc_after": 0.0
+            },
+            {
+                "timestamp": "2024-01-01T00:45:00",
+                "action": "charge",
+                "power_kw": 1500.0,
+                "market": "da",
+                "soc_after": 0.17,
+                "renewable_action": "self_consume",
+                "renewable_power_kw": 750.0
+            },
+            {
+                "timestamp": "2024-01-01T01:00:00",
+                "action": "idle",
+                "power_kw": 0.0,
+                "market": "da",
+                "soc_after": 0.17
+            }
+        ],
+        "soc_trajectory": [0.5, 0.25, 0.0, 0.17, 0.17, 0.25, 0.35, 0.45],
+        "renewable_utilization": {
+            "total_generation_kwh": 8000.0,
+            "self_consumption_kwh": 5000.0,
+            "export_kwh": 2000.0,
+            "curtailment_kwh": 1000.0,
+            "utilization_rate": 0.875
+        },
+        "solve_time_seconds": 0.523,
+        "solver_name": "highs",
+        "model_type": "III-renew",
+        "status": "optimal",
+        "num_variables": 5800,
+        "num_constraints": 4200
+    }
+}
