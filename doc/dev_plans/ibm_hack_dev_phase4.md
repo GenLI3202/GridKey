@@ -29,10 +29,11 @@ LABEL description="BESS Optimizer Service with Renewable Integration"
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for solvers
+# Install system dependencies for solvers AND curl for health checks
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgmp-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (for layer caching)
@@ -69,10 +70,20 @@ Location: `src/api/main.py`
 
 **Depends on:** `optimizer_service.py` (3.1)
 
+> [!IMPORTANT]
+> Also create `src/api/__init__.py` (empty file) for proper Python module structure.
+
 ```python
+"""
+GridKey Optimizer Service API
+=============================
+
+FastAPI endpoints for BESS optimization with renewable integration.
+"""
+
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
 import logging
 
 from src.service.optimizer_service import OptimizerService
@@ -88,15 +99,43 @@ logger = logging.getLogger(__name__)
 service = OptimizerService()
 
 
+class MarketPrices(BaseModel):
+    """Market price data structure matching DataAdapter expectations."""
+    day_ahead: List[float] = Field(..., description="Day-ahead prices (EUR/MWh), 15-min resolution")
+    afrr_energy_pos: List[float] = Field(..., description="aFRR+ energy prices (EUR/MWh), 15-min resolution")
+    afrr_energy_neg: List[float] = Field(..., description="aFRR- energy prices (EUR/MWh), 15-min resolution")
+    fcr: List[float] = Field(..., description="FCR capacity prices (EUR/MW), 4-hour blocks")
+    afrr_capacity_pos: List[float] = Field(..., description="aFRR+ capacity prices (EUR/MW), 4-hour blocks")
+    afrr_capacity_neg: List[float] = Field(..., description="aFRR- capacity prices (EUR/MW), 4-hour blocks")
+
+
 class OptimizeRequest(BaseModel):
+    """API request for optimization."""
     location: str = "Munich"
     country: str = "DE_LU"
-    model_type: str = "III-renew"
-    c_rate: float = 0.5
-    alpha: float = 1.0
-    time_horizon_hours: int = 48
-    market_prices: Optional[dict] = None
-    renewable_generation: Optional[List[float]] = None
+    model_type: str = Field(default="III", description="Model type: I, II, III, or III-renew")
+    c_rate: float = Field(default=0.5, description="Battery C-rate (0.25, 0.33, 0.5)")
+    alpha: float = Field(default=1.0, description="Degradation cost weight")
+    daily_cycle_limit: float = Field(default=1.0, description="Maximum daily cycles")
+    time_horizon_hours: int = Field(default=48, description="Optimization horizon in hours")
+    
+    # Market prices (required)
+    market_prices: Optional[Dict[str, List[float]]] = Field(
+        default=None,
+        description="Market price data. Keys: day_ahead, afrr_energy_pos, afrr_energy_neg, fcr, afrr_capacity_pos, afrr_capacity_neg"
+    )
+    
+    # Renewable forecast (optional) - 15-min resolution in kW
+    renewable_generation: Optional[List[float]] = Field(
+        default=None,
+        description="Renewable generation forecast (kW), 15-min resolution"
+    )
+
+
+class OptimizeResponse(BaseModel):
+    """API response wrapper."""
+    status: str
+    data: Dict[str, Any]
 
 
 @app.get("/health")
@@ -109,26 +148,54 @@ async def health_check():
     }
 
 
-@app.post("/api/v1/optimize", response_model=dict)
+@app.post("/api/v1/optimize", response_model=OptimizeResponse)
 async def optimize(request: OptimizeRequest):
     """
     Run BESS optimization with optional renewable integration.
+    
+    Required: market_prices with all 6 price arrays
+    Optional: renewable_generation for Model III-renew
     """
+    # Validate required input
+    if not request.market_prices:
+        raise HTTPException(
+            status_code=400, 
+            detail="market_prices is required. Must include: day_ahead, afrr_energy_pos, afrr_energy_neg, fcr, afrr_capacity_pos, afrr_capacity_neg"
+        )
+    
+    # Validate required keys
+    required_keys = ['day_ahead', 'afrr_energy_pos', 'afrr_energy_neg', 'fcr', 'afrr_capacity_pos', 'afrr_capacity_neg']
+    missing_keys = [k for k in required_keys if k not in request.market_prices]
+    if missing_keys:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required market_prices keys: {missing_keys}"
+        )
+    
     try:
+        # Prepare generation forecast with correct key for DataAdapter
+        generation_forecast = None
+        if request.renewable_generation:
+            generation_forecast = {"generation_kw": request.renewable_generation}
+        
         result = service.optimize(
-            market_prices=request.market_prices or {},
-            generation_forecast={"pv": request.renewable_generation} if request.renewable_generation else None,
+            market_prices=request.market_prices,
+            generation_forecast=generation_forecast,
             model_type=request.model_type,
             c_rate=request.c_rate,
             alpha=request.alpha,
+            daily_cycle_limit=request.daily_cycle_limit,
             time_horizon_hours=request.time_horizon_hours,
         )
-        return {"status": "success", "data": result.dict()}
+        
+        # Use model_dump() for Pydantic v2 (not deprecated .dict())
+        return OptimizeResponse(status="success", data=result.model_dump())
+    
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.exception("Optimization failed")
-        raise HTTPException(status_code=500, detail="Optimization failed")
+        raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
 ```
 
 ---
@@ -141,6 +208,9 @@ async def optimize(request: OptimizeRequest):
 
 #### Request Body (JSON)
 
+> [!NOTE]
+> Market price keys must match DataAdapter expectations exactly.
+
 ```json
 {
   "location": "Munich",
@@ -148,18 +218,19 @@ async def optimize(request: OptimizeRequest):
   "model_type": "III-renew",
   "c_rate": 0.5,
   "alpha": 1.0,
+  "daily_cycle_limit": 1.0,
   "time_horizon_hours": 48,
   
   "market_prices": {
-    "da_prices": [39.91, -0.04, -9.01, "..."],
-    "fcr_prices": [114.8, 104.4, 68.8, "..."],
-    "afrr_capacity_pos": [6.33, 4.12, "..."],
-    "afrr_capacity_neg": [13.07, 15.02, "..."],
-    "afrr_energy_pos": [50.34, 46.94, "..."],
-    "afrr_energy_neg": [29.70, 40.87, "..."]
+    "day_ahead": [39.91, -0.04, -9.01, "... 192 values for 48h"],
+    "fcr": [114.8, 104.4, 68.8, "... 12 values for 48h"],
+    "afrr_capacity_pos": [6.33, 4.12, "... 12 values"],
+    "afrr_capacity_neg": [13.07, 15.02, "... 12 values"],
+    "afrr_energy_pos": [50.34, 46.94, "... 192 values"],
+    "afrr_energy_neg": [29.70, 40.87, "... 192 values"]
   },
   
-  "renewable_generation": [0, 0, 0, 10.5, 25.3, 45.2, "..."]
+  "renewable_generation": [0, 0, 0, 10.5, 25.3, 45.2, "... 192 values in kW"]
 }
 ```
 
@@ -173,9 +244,8 @@ async def optimize(request: OptimizeRequest):
     "net_profit": 1523.18,
   
     "revenue_breakdown": {
-      "day_ahead": 892.45,
+      "da": 892.45,
       "fcr": 324.80,
-      "afrr_capacity": 456.12,
       "afrr_energy": 98.33,
       "renewable_export": 75.82
     },
@@ -209,6 +279,7 @@ async def optimize(request: OptimizeRequest):
     "solve_time_seconds": 12.45,
     "solver_name": "highs",
     "model_type": "III-renew",
+    "status": "optimal",
     "num_variables": 15234,
     "num_constraints": 28456
   }
@@ -257,6 +328,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+          pip install -r requirements-api.txt
           pip install pytest pytest-cov
           
       - name: Run unit tests
@@ -280,7 +352,7 @@ jobs:
       - name: Run container health check
         run: |
           docker run -d -p 8000:8000 --name test-container gridkey-optimizer:test
-          sleep 10
+          sleep 15
           curl -f http://localhost:8000/health
           docker stop test-container
 ```
@@ -303,10 +375,22 @@ docker run -d -p 8000:8000 --name gridkey-opt gridkey-optimizer:latest
 # Test health endpoint
 curl http://localhost:8000/health
 
-# Test optimize endpoint
+# Test optimize endpoint (with market data)
 curl -X POST http://localhost:8000/api/v1/optimize \
   -H "Content-Type: application/json" \
-  -d '{"country": "DE_LU", "model_type": "III-renew", "time_horizon_hours": 24}'
+  -d '{
+    "country": "DE_LU",
+    "model_type": "III",
+    "time_horizon_hours": 24,
+    "market_prices": {
+      "day_ahead": [50.0, 51.0, 52.0],
+      "afrr_energy_pos": [40.0, 41.0, 42.0],
+      "afrr_energy_neg": [30.0, 31.0, 32.0],
+      "fcr": [100.0],
+      "afrr_capacity_pos": [5.0],
+      "afrr_capacity_neg": [10.0]
+    }
+  }'
 
 # Cleanup
 docker stop gridkey-opt && docker rm gridkey-opt
@@ -316,6 +400,10 @@ docker stop gridkey-opt && docker rm gridkey-opt
 
 ```python
 # src/test/test_integration.py
+"""
+Integration tests for GridKey Optimizer API.
+"""
+
 import pytest
 from fastapi.testclient import TestClient
 from src.api.main import app
@@ -323,22 +411,94 @@ from src.api.main import app
 client = TestClient(app)
 
 
-def test_health_endpoint():
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def sample_market_prices():
+    """Generate sample market prices for 24h (96 timesteps, 6 blocks)."""
+    return {
+        "day_ahead": [50.0 + i * 0.1 for i in range(96)],
+        "afrr_energy_pos": [40.0] * 96,
+        "afrr_energy_neg": [30.0] * 96,
+        "fcr": [100.0] * 6,
+        "afrr_capacity_pos": [5.0] * 6,
+        "afrr_capacity_neg": [10.0] * 6,
+    }
 
 
-def test_optimize_endpoint_minimal():
-    response = client.post("/api/v1/optimize", json={
-        "country": "DE_LU",
-        "model_type": "III-renew",
-        "time_horizon_hours": 24
-    })
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert "objective_value" in data["data"]
+@pytest.fixture
+def sample_renewable_generation():
+    """Generate sample PV generation for 24h."""
+    from src.test.fixtures.generate_synthetic_data import generate_synthetic_renewable
+    return generate_synthetic_renewable(hours=24, peak_kw=100.0)
+
+
+# ---------------------------------------------------------------------------
+# Health Endpoint Tests
+# ---------------------------------------------------------------------------
+
+class TestHealthEndpoint:
+    def test_health_returns_200(self):
+        response = client.get("/health")
+        assert response.status_code == 200
+
+    def test_health_status_healthy(self):
+        response = client.get("/health")
+        assert response.json()["status"] == "healthy"
+
+    def test_health_includes_version(self):
+        response = client.get("/health")
+        assert "version" in response.json()
+
+
+# ---------------------------------------------------------------------------
+# Optimize Endpoint Tests
+# ---------------------------------------------------------------------------
+
+class TestOptimizeEndpoint:
+    def test_missing_market_prices_returns_400(self):
+        response = client.post("/api/v1/optimize", json={
+            "country": "DE_LU",
+            "model_type": "III",
+            "time_horizon_hours": 24
+        })
+        assert response.status_code == 400
+        assert "market_prices is required" in response.json()["detail"]
+
+    def test_missing_price_keys_returns_400(self):
+        response = client.post("/api/v1/optimize", json={
+            "model_type": "III",
+            "market_prices": {"day_ahead": [50.0] * 96}
+        })
+        assert response.status_code == 400
+        assert "Missing required" in response.json()["detail"]
+
+    def test_valid_request_returns_200(self, sample_market_prices):
+        response = client.post("/api/v1/optimize", json={
+            "model_type": "III",
+            "time_horizon_hours": 24,
+            "market_prices": sample_market_prices
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert "objective_value" in data["data"]
+
+    def test_with_renewable_integration(self, sample_market_prices, sample_renewable_generation):
+        response = client.post("/api/v1/optimize", json={
+            "model_type": "III-renew",
+            "time_horizon_hours": 24,
+            "market_prices": sample_market_prices,
+            "renewable_generation": sample_renewable_generation
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        # III-renew should include renewable utilization
+        if data["data"].get("renewable_utilization"):
+            assert "total_generation_kwh" in data["data"]["renewable_utilization"]
 ```
 
 ---
@@ -350,15 +510,19 @@ Location: `src/test/fixtures/generate_synthetic_data.py`
 > **Note:** Using synthetic data per design decision.
 
 ```python
+"""
+Synthetic data generators for testing.
+"""
+
 import numpy as np
-from datetime import datetime, timedelta
+from typing import List, Dict
 
 
 def generate_synthetic_renewable(
     hours: int = 48,
     peak_kw: float = 100.0,
     noise_factor: float = 0.1
-) -> list[float]:
+) -> List[float]:
     """
     Generate synthetic PV generation profile.
     
@@ -389,28 +553,53 @@ def generate_synthetic_renewable(
     return generation
 
 
-def generate_synthetic_market_prices(hours: int = 48) -> dict:
-    """Generate synthetic market price data."""
+def generate_synthetic_market_prices(hours: int = 48) -> Dict[str, List[float]]:
+    """
+    Generate synthetic market price data.
+    
+    Returns dict with keys matching DataAdapter expectations:
+    - day_ahead, afrr_energy_pos, afrr_energy_neg (15-min resolution)
+    - fcr, afrr_capacity_pos, afrr_capacity_neg (4-hour blocks)
+    """
     timesteps_15min = hours * 4
     blocks_4h = hours // 4
     
     return {
-        "da_prices": list(np.random.uniform(20, 80, timesteps_15min)),
-        "fcr_prices": list(np.random.uniform(50, 150, blocks_4h)),
-        "afrr_capacity_pos": list(np.random.uniform(3, 10, blocks_4h)),
-        "afrr_capacity_neg": list(np.random.uniform(5, 15, blocks_4h)),
+        "day_ahead": list(np.random.uniform(20, 80, timesteps_15min)),
         "afrr_energy_pos": list(np.random.uniform(30, 70, timesteps_15min)),
         "afrr_energy_neg": list(np.random.uniform(20, 50, timesteps_15min)),
+        "fcr": list(np.random.uniform(50, 150, blocks_4h)),
+        "afrr_capacity_pos": list(np.random.uniform(3, 10, blocks_4h)),
+        "afrr_capacity_neg": list(np.random.uniform(5, 15, blocks_4h)),
     }
 ```
 
 ---
 
+## 4.7 Required Files Checklist
+
+Before deployment, ensure these files exist:
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/api/__init__.py` | Python module marker | [NEW] |
+| `src/api/main.py` | FastAPI application | [NEW] |
+| `src/test/fixtures/__init__.py` | Test fixtures module | [NEW] |
+| `src/test/fixtures/generate_synthetic_data.py` | Synthetic data generators | [NEW] |
+| `src/test/test_integration.py` | API integration tests | [NEW] |
+| `Dockerfile` | Container configuration | [NEW] |
+| `.github/workflows/test.yml` | CI pipeline | [NEW] |
+
+---
+
 ## Verification Checklist (Phase 4)
 
-- [ ] Docker image builds successfully
+- [ ] `src/api/__init__.py` exists
+- [ ] Docker image builds successfully (`docker build -t gridkey-optimizer .`)
 - [ ] Container health check passes
-- [ ] `/api/v1/optimize` returns valid response
+- [ ] `/health` endpoint returns `{"status": "healthy"}`
+- [ ] `/api/v1/optimize` validates missing `market_prices`
+- [ ] `/api/v1/optimize` returns valid response with synthetic data
 - [ ] GitHub Actions workflow runs without errors
 - [ ] Integration tests pass with synthetic data
 - [ ] API response matches schema specification
