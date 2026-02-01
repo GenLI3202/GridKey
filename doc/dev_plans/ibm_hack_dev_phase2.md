@@ -10,6 +10,11 @@ Location: `src/core/optimizer.py` (extend existing file)
 
 **Depends on:** LaTeX formulation (1.2)
 
+> [!IMPORTANT]  
+> **Output Format Specification:** The `extract_solution()` output MUST conform to  
+> [`data/optimizer_output_template.json`](file:///d:/my_projects/GridPro/GridKey/data/optimizer_output_template.json)  
+> New fields: `p_renewable_self_kw`, `p_renewable_export_kw`, `p_renewable_curtail_kw`, `revenue_renewable_export_eur`
+
 Create a new class `BESSOptimizerModelIIIRenew` that extends `BESSOptimizerModelIII`:
 
 ```python
@@ -82,7 +87,12 @@ class BESSOptimizerModelIIIRenew(BESSOptimizerModelIII):
 
 Location: `src/service/adapter.py`
 
-**Depends on:**`models.py` (1.1)
+**Depends on:** `models.py` (1.1)
+
+> [!IMPORTANT]  
+> **Input Format Specification:** The `DataAdapter.adapt()` input MUST conform to  
+> [`data/optimizer_input_template.json`](file:///d:/my_projects/GridPro/GridKey/data/optimizer_input_template.json)  
+> Sources: `generation_forecast` (Module A), `market_prices` (Module B), `battery_config` (Config)
 
 ```python
 

@@ -1,0 +1,234 @@
+{
+    "_specification": {
+        "name": "Optimizer Service Output Format",
+        "version": "1.0",
+        "description": "Standard output format for Module D (Optimizer Service)",
+        "based_on": "GridKey/data/sample_model_output.json",
+        "changes": "Added 3 renewable fields per Blueprint Section 6.4"
+    },
+    "schedule": [
+        {
+            "_comment": "Entry 0 - EXACT structure from sample_model_output.json + renewable fields",
+            "time_step": 0,
+            "hour": 0.0,
+            "soc_kwh": 1657.8947368421,
+            "soc_pct": 37.0727803408,
+            "p_ch_kw": 0.0,
+            "p_dis_kw": 0.0,
+            "p_total_ch_kw": 0.0,
+            "p_total_dis_kw": 2250.0,
+            "p_afrr_pos_e_kw": 2250.0,
+            "p_afrr_neg_e_kw": 0.0,
+            "y_ch": 0,
+            "y_dis": 0,
+            "y_total_ch": 0.0,
+            "y_total_dis": 1.0,
+            "c_fcr_mw": 0.0,
+            "c_afrr_pos_mw": 0.0,
+            "c_afrr_neg_mw": 0.0,
+            "y_fcr": 0.0,
+            "y_afrr_pos": 0.0,
+            "y_afrr_neg": 0.0,
+            "price_da_eur_mwh": 54.89,
+            "price_fcr_eur_mw": 38.52,
+            "price_afrr_cap_pos_eur_mw": 14.4526040816,
+            "price_afrr_cap_neg_eur_mw": 0.6240747875,
+            "price_afrr_energy_pos_eur_mwh": 127.29,
+            "price_afrr_energy_neg_eur_mwh": 56.9,
+            "cst8_discharge_sum": 1.0,
+            "cst8_charge_sum": 0.0,
+            "revenue_da_eur": 0.0,
+            "revenue_afrr_energy_eur": 71.600625,
+            "revenue_as_capacity_eur": 0.0,
+            "segment_1": 750.0,
+            "segment_2": 750.0,
+            "segment_3": 157.8947368421,
+            "segment_4": 0.0,
+            "segment_5": 0.0,
+            "segment_6": 0.0,
+            "segment_7": 0.0,
+            "segment_8": 0.0,
+            "segment_9": 0.0,
+            "segment_10": 0.0,
+            "cal_cost_eur_hr": 2.8405630355,
+            "_NEW_RENEWABLE_FIELDS_": "=== Added for Model III-renew ===",
+            "p_renewable_self_kw": null,
+            "p_renewable_export_kw": null,
+            "p_renewable_curtail_kw": null,
+            "revenue_renewable_export_eur": null
+        }
+    ],
+    "_field_specification": {
+        "EXISTING_FIELDS": {
+            "time_step": {
+                "type": "int",
+                "desc": "0-based timestep index"
+            },
+            "hour": {
+                "type": "float",
+                "desc": "Hours from optimization start (0.25 = 15min)"
+            },
+            "soc_kwh": {
+                "type": "float",
+                "desc": "State of charge after this step (kWh)"
+            },
+            "soc_pct": {
+                "type": "float",
+                "desc": "SOC as percentage (0-100)"
+            },
+            "p_ch_kw": {
+                "type": "float",
+                "desc": "DA market charging power (kW)"
+            },
+            "p_dis_kw": {
+                "type": "float",
+                "desc": "DA market discharging power (kW)"
+            },
+            "p_total_ch_kw": {
+                "type": "float",
+                "desc": "Total charging = p_ch + p_afrr_neg_e + p_renewable_self (kW)"
+            },
+            "p_total_dis_kw": {
+                "type": "float",
+                "desc": "Total discharging = p_dis + p_afrr_pos_e (kW)"
+            },
+            "p_afrr_pos_e_kw": {
+                "type": "float",
+                "desc": "aFRR+ energy activation - discharge (kW)"
+            },
+            "p_afrr_neg_e_kw": {
+                "type": "float",
+                "desc": "aFRR- energy activation - charge (kW)"
+            },
+            "y_ch": {
+                "type": "int",
+                "desc": "Binary: 1 if DA charging, 0 otherwise"
+            },
+            "y_dis": {
+                "type": "int",
+                "desc": "Binary: 1 if DA discharging, 0 otherwise"
+            },
+            "y_total_ch": {
+                "type": "float",
+                "desc": "Binary: 1 if total charging > 0"
+            },
+            "y_total_dis": {
+                "type": "float",
+                "desc": "Binary: 1 if total discharging > 0"
+            },
+            "c_fcr_mw": {
+                "type": "float",
+                "desc": "FCR capacity reservation (MW)"
+            },
+            "c_afrr_pos_mw": {
+                "type": "float",
+                "desc": "aFRR+ capacity reservation (MW)"
+            },
+            "c_afrr_neg_mw": {
+                "type": "float",
+                "desc": "aFRR- capacity reservation (MW)"
+            },
+            "y_fcr": {
+                "type": "float",
+                "desc": "Binary: 1 if FCR reserved"
+            },
+            "y_afrr_pos": {
+                "type": "float",
+                "desc": "Binary: 1 if aFRR+ capacity reserved"
+            },
+            "y_afrr_neg": {
+                "type": "float",
+                "desc": "Binary: 1 if aFRR- capacity reserved"
+            },
+            "price_da_eur_mwh": {
+                "type": "float",
+                "desc": "DA spot price (EUR/MWh)"
+            },
+            "price_fcr_eur_mw": {
+                "type": "float",
+                "desc": "FCR capacity price (EUR/MW per 4h block)"
+            },
+            "price_afrr_cap_pos_eur_mw": {
+                "type": "float",
+                "desc": "aFRR+ capacity price (EUR/MW)"
+            },
+            "price_afrr_cap_neg_eur_mw": {
+                "type": "float",
+                "desc": "aFRR- capacity price (EUR/MW)"
+            },
+            "price_afrr_energy_pos_eur_mwh": {
+                "type": "float|null",
+                "desc": "aFRR+ energy price, null = market not activated"
+            },
+            "price_afrr_energy_neg_eur_mwh": {
+                "type": "float|null",
+                "desc": "aFRR- energy price, null = market not activated"
+            },
+            "cst8_discharge_sum": {
+                "type": "float",
+                "desc": "Constraint 8 discharge indicator"
+            },
+            "cst8_charge_sum": {
+                "type": "float",
+                "desc": "Constraint 8 charge indicator"
+            },
+            "revenue_da_eur": {
+                "type": "float",
+                "desc": "DA market revenue this step (EUR)"
+            },
+            "revenue_afrr_energy_eur": {
+                "type": "float|null",
+                "desc": "aFRR energy revenue, null = not activated"
+            },
+            "revenue_as_capacity_eur": {
+                "type": "float",
+                "desc": "Ancillary service capacity revenue (EUR)"
+            },
+            "segment_1 to segment_10": {
+                "type": "float",
+                "desc": "SOC in each degradation segment (kWh)"
+            },
+            "cal_cost_eur_hr": {
+                "type": "float",
+                "desc": "Calendar aging cost per hour at current SOC (EUR/hr)"
+            }
+        },
+        "NEW_RENEWABLE_FIELDS": {
+            "p_renewable_self_kw": {
+                "type": "float|null",
+                "desc": "Renewable power used for battery charging (kW)",
+                "source": "Blueprint Section 6.4 - P_renewable_self[t]",
+                "null_when": "Model does not include renewable integration"
+            },
+            "p_renewable_export_kw": {
+                "type": "float|null",
+                "desc": "Renewable power exported to grid (kW)",
+                "source": "Blueprint Section 6.4 - P_renewable_export[t]",
+                "null_when": "Model does not include renewable integration"
+            },
+            "p_renewable_curtail_kw": {
+                "type": "float|null",
+                "desc": "Renewable power curtailed/wasted (kW)",
+                "source": "Blueprint Section 6.4 - P_renewable_curtail[t]",
+                "null_when": "Model does not include renewable integration"
+            },
+            "revenue_renewable_export_eur": {
+                "type": "float|null",
+                "desc": "Revenue from renewable export = p_renewable_export × price_da × dt (EUR)",
+                "source": "Blueprint Section 6.4 - R^export",
+                "null_when": "Model does not include renewable integration"
+            }
+        }
+    },
+    "_null_semantics": {
+        "price_afrr_energy_*_eur_mwh = null": "Market was NOT activated this timestep, no participation allowed",
+        "revenue_afrr_energy_eur = null": "No revenue because aFRR energy market not activated",
+        "p_renewable_*_kw = null": "Optimizer was run without renewable integration (Model I/II/III)",
+        "revenue_renewable_export_eur = null": "No renewable integration in this optimization run"
+    },
+    "_constraint_reference": {
+        "Cst-R1": "p_renewable_self + p_renewable_export + p_renewable_curtail = P_renewable_input",
+        "Cst-R2": "p_total_ch = p_ch + p_afrr_neg_e + p_renewable_self",
+        "Cst-R3": "revenue_renewable_export = sum(p_renewable_export × price_da × 0.25/1000)"
+    }
+}
