@@ -131,6 +131,70 @@ class OptimizerService:
 
         return self._build_result(solution, opt_input, solver_results)
 
+    def optimize_12h_mpc(
+        self,
+        market_prices: dict,
+        generation_forecast: Optional[dict] = None,
+        model_type: str = "III",
+        c_rate: float = 0.5,
+        alpha: float = 1.0,
+        horizon_hours: int = 6,
+        execution_hours: int = 4,
+    ) -> OptimizationResult:
+        """
+        Solve 12h problem using MPC rolling horizon.
+
+        Uses MPCRollingHorizon to break 12h into 6h optimization windows,
+        committing 4h at a time. Total of 3 iterations.
+
+        Args:
+            market_prices: Market price data (12h: 48 values @ 15-min)
+            generation_forecast: Renewable forecast (optional)
+            model_type: "I", "II", "III", or "III-renew"
+            c_rate: Battery C-rate
+            alpha: Degradation cost weight
+            horizon_hours: MPC optimization window (default 6h)
+            execution_hours: Commit execution window (default 4h)
+
+        Returns:
+            OptimizationResult with 12h complete schedule
+
+        Estimated time: ~15-20 seconds (3 iterations × ~5 sec)
+        """
+        from .mpc import MPCRollingHorizon
+
+        logger.info(
+            "Starting MPC 12h optimization: model=%s, c_rate=%s, alpha=%s",
+            model_type, c_rate, alpha
+        )
+
+        # 1. Adapt input to 12h OptimizationInput
+        opt_input_12h = self.adapter.adapt(
+            market_prices=market_prices,
+            generation_forecast=generation_forecast,
+            battery_config=self._load_battery_config(),
+            time_horizon_hours=12,
+        )
+        opt_input_12h.model_type = ModelType(model_type)
+        opt_input_12h.alpha = alpha
+
+        # 2. Get optimizer
+        optimizer = self._get_optimizer(model_type, alpha)
+
+        # 3. Create MPC helper
+        mpc = MPCRollingHorizon(
+            optimizer=optimizer,
+            adapter=self.adapter,
+            horizon_hours=horizon_hours,
+            execution_hours=execution_hours,
+        )
+
+        # 4. Run MPC
+        solution = mpc.solve_12h(opt_input_12h, c_rate)
+
+        # 5. Build result
+        return self._build_result(solution, opt_input_12h, None)
+
     def _get_optimizer(self, model_type: str, alpha: float):
         """Get or create optimizer instance."""
         from src.core.optimizer import (

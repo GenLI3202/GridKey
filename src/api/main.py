@@ -114,6 +114,39 @@ class OptimizeResponse(BaseModel):
     data: Dict[str, Any]
 
 
+class MarketPrices12h(BaseModel):
+    """12h market price validation (48 values @ 15-min, 3 blocks @ 4-hour)."""
+    day_ahead: List[float] = Field(..., min_length=48, max_length=48, description="Day-ahead prices (48 values)")
+    afrr_energy_pos: List[float] = Field(..., min_length=48, max_length=48, description="aFRR+ energy prices (48 values)")
+    afrr_energy_neg: List[float] = Field(..., min_length=48, max_length=48, description="aFRR- energy prices (48 values)")
+    fcr: List[float] = Field(..., min_length=3, max_length=3, description="FCR capacity prices (3 blocks)")
+    afrr_capacity_pos: List[float] = Field(..., min_length=3, max_length=3, description="aFRR+ capacity prices (3 blocks)")
+    afrr_capacity_neg: List[float] = Field(..., min_length=3, max_length=3, description="aFRR- capacity prices (3 blocks)")
+
+
+class OptimizeRequestMPC(BaseModel):
+    """12h MPC optimization request using rolling horizon."""
+    location: str = "Munich"
+    country: str = "DE_LU"
+    model_type: str = Field(default="III", description="Model type: I, II, III, or III-renew")
+    c_rate: float = Field(default=0.5, description="Battery C-rate (0.25, 0.33, 0.5)")
+    alpha: float = Field(default=1.0, description="Degradation cost weight")
+
+    # 12h data (48 values @ 15-min)
+    market_prices: MarketPrices12h = Field(
+        ...,
+        description="12h market price data (48 values @ 15-min)"
+    )
+
+    # Renewable forecast (optional) - 48 values @ 15-min in kW
+    renewable_generation: Optional[List[float]] = Field(
+        default=None,
+        min_length=48,
+        max_length=48,
+        description="Renewable generation forecast (kW), 48 values @ 15-min"
+    )
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
@@ -179,3 +212,51 @@ async def optimize(request: OptimizeRequest):
     except Exception as e:
         logger.exception("Optimization failed")
         raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
+
+
+@app.post("/api/v1/optimize-mpc", response_model=OptimizeResponse)
+async def optimize_mpc(request: OptimizeRequestMPC):
+    """
+    12h MPC rolling horizon optimization.
+
+    Uses Model Predictive Control with 6h optimization windows and 4h roll steps.
+    Total of 3 iterations to produce a complete 12h schedule.
+
+    Strategy:
+    - Iteration 1: Optimize [0h-6h], commit [0h-4h]
+    - Iteration 2: Optimize [4h-10h], commit [4h-8h]
+    - Iteration 3: Optimize [8h-12h], commit [8h-12h]
+
+    Estimated response time: 15-20 seconds (3 iterations × ~5 sec each)
+    """
+    try:
+        # Prepare generation forecast
+        generation_forecast = None
+        if request.renewable_generation:
+            generation_forecast = {"generation_kw": request.renewable_generation}
+
+        # Convert MarketPrices12h to dict format
+        market_prices_dict = {
+            'day_ahead': request.market_prices.day_ahead,
+            'afrr_energy_pos': request.market_prices.afrr_energy_pos,
+            'afrr_energy_neg': request.market_prices.afrr_energy_neg,
+            'fcr': request.market_prices.fcr,
+            'afrr_capacity_pos': request.market_prices.afrr_capacity_pos,
+            'afrr_capacity_neg': request.market_prices.afrr_capacity_neg,
+        }
+
+        result = service.optimize_12h_mpc(
+            market_prices=market_prices_dict,
+            generation_forecast=generation_forecast,
+            model_type=request.model_type,
+            c_rate=request.c_rate,
+            alpha=request.alpha,
+        )
+
+        return OptimizeResponse(status="success", data=result.model_dump())
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception("MPC optimization failed")
+        raise HTTPException(status_code=500, detail=f"MPC optimization failed: {str(e)}")

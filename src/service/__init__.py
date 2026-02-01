@@ -15,6 +15,7 @@ Data Models:
 
 Service:
 - OptimizerService: Unified service wrapper for the optimization workflow
+- MPCRollingHorizon: MPC rolling horizon helper for 12h optimization
 """
 
 from .models import (
@@ -25,6 +26,7 @@ from .models import (
     OptimizationResult,
 )
 from .optimizer_service import OptimizerService
+from .mpc import MPCRollingHorizon
 
 __all__ = [
     'ModelType',
@@ -33,6 +35,7 @@ __all__ = [
     'RenewableUtilization',
     'OptimizationResult',
     'OptimizerService',
+    'MPCRollingHorizon',
 ]
 
 __version__ = '1.0.0'
