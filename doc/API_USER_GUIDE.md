@@ -20,20 +20,57 @@
 
 ## Quick Start
 
-```bash
-# Start the service
-cd D:/my_projects/GridPro/GridKey
-./startup.sh
+### Windows (PowerShell)
 
-# Access interactive API documentation
-# Browser: http://localhost:8000/docs
+```powershell
+# Navigate to project directory
+cd D:\my_projects\GridPro\GridKey
+
+# Activate conda environment (if needed)
+conda activate gridkey
+
+# Start the service
+.\startup.ps1 dev
+
+# Or directly with uvicorn
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+### Linux/macOS
+
+```bash
+cd D:/my_projects/GridPro/GridKey
+./startup.sh dev
+```
+
+Then open browser: **http://localhost:8000/docs**
 
 ---
 
 ## Starting the Service
 
-### Method 1: startup.sh (Recommended)
+### Windows (PowerShell) - Recommended
+
+```powershell
+# Make sure you're in the GridKey directory
+cd D:\my_projects\GridPro\GridKey
+
+# Activate conda environment
+conda activate gridkey
+
+# Option 1: Use the PowerShell script (dev mode with hot-reload)
+.\startup.ps1 dev
+
+# Option 2: Direct uvicorn (simplest)
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Option 3: Production mode (no reload)
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+```
+
+**Note:** The `.sh` script does **not** work on Windows. Use `startup.ps1` or run uvicorn directly.
+
+### Linux/macOS
 
 ```bash
 # Production mode
@@ -46,23 +83,11 @@ cd D:/my_projects/GridPro/GridKey
 ./startup.sh test
 ```
 
-### Method 2: Direct uvicorn
+### Docker (Optional)
+
+**Note:** Docker is **not required** to run the service. Only use Docker if you want containerized deployment.
 
 ```bash
-cd D:/my_projects/GridPro/GridKey
-
-# Install dependencies (if needed)
-pip install -r requirements.txt
-
-# Start service
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Method 3: Docker
-
-```bash
-cd D:/my_projects/GridPro/GridKey
-
 # Build image
 docker build -t gridkey-optimizer .
 
@@ -405,10 +430,16 @@ print(f"Schedule Length: {len(result['data']['schedule'])} timesteps")
 
 Use Swagger UI for interactive API exploration:
 
-1. Start service: `./startup.sh`
-2. Open browser: `http://localhost:8000/docs`
+1. **Start service:**
+   - Windows: `uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload`
+   - Or: `.\startup.ps1 dev`
+
+2. **Open browser:** http://localhost:8000/docs
+
 3. Click **Try it out** on any endpoint
+
 4. Fill in request body
+
 5. Click **Execute**
 
 ---

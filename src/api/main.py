@@ -48,6 +48,21 @@ logger = logging.getLogger(__name__)
 service = OptimizerService()
 
 
+@app.on_event("startup")
+async def startup_event():
+    """Print helpful URLs on startup."""
+    print("\n" + "=" * 60)
+    print("  GridKey Optimizer Service is running!")
+    print("=" * 60)
+    print("  API Documentation (Swagger UI):")
+    print("    http://localhost:8000/docs")
+    print("  Alternative Documentation (ReDoc):")
+    print("    http://localhost:8000/redoc")
+    print("  Health Check:")
+    print("    http://localhost:8000/health")
+    print("=" * 60 + "\n")
+
+
 # Maximum allowed horizon for HiGHS (prevent excessively long solve times)
 MAX_HORIZON_HOURS_HIGHS = 12
 MAX_HORIZON_HOURS_COMMERCIAL = 48

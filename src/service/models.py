@@ -53,14 +53,38 @@ class OptimizationInput(BaseModel):
     time_horizon_hours: int = Field(default=48, description="Optimization horizon")
 
     # Market prices (15-min resolution)
-    da_prices: List[float] = Field(..., description="Day-ahead prices (EUR/MWh)")
-    afrr_energy_pos: List[float] = Field(..., description="aFRR+ energy prices (EUR/MWh)")
-    afrr_energy_neg: List[float] = Field(..., description="aFRR- energy prices (EUR/MWh)")
+    da_prices: List[float] = Field(
+        ...,
+        description="Day-ahead prices (EUR/MWh), 15-min resolution. 48h = 192 values.",
+        examples=[[50.0] * 192]
+    )
+    afrr_energy_pos: List[float] = Field(
+        ...,
+        description="aFRR+ energy prices (EUR/MWh), 15-min resolution. 48h = 192 values.",
+        examples=[[40.0] * 192]
+    )
+    afrr_energy_neg: List[float] = Field(
+        ...,
+        description="aFRR- energy prices (EUR/MWh), 15-min resolution. 48h = 192 values.",
+        examples=[[30.0] * 192]
+    )
 
     # Market prices (4-hour blocks)
-    fcr_prices: List[float] = Field(..., description="FCR capacity prices (EUR/MW)")
-    afrr_capacity_pos: List[float] = Field(..., description="aFRR+ capacity prices (EUR/MW)")
-    afrr_capacity_neg: List[float] = Field(..., description="aFRR- capacity prices (EUR/MW)")
+    fcr_prices: List[float] = Field(
+        ...,
+        description="FCR capacity prices (EUR/MW), 4-hour blocks. 48h = 12 blocks.",
+        examples=[[100.0] * 12]
+    )
+    afrr_capacity_pos: List[float] = Field(
+        ...,
+        description="aFRR+ capacity prices (EUR/MW), 4-hour blocks. 48h = 12 blocks.",
+        examples=[[5.0] * 12]
+    )
+    afrr_capacity_neg: List[float] = Field(
+        ...,
+        description="aFRR- capacity prices (EUR/MW), 4-hour blocks. 48h = 12 blocks.",
+        examples=[[10.0] * 12]
+    )
 
     # Renewable generation forecast (15-min resolution)
     renewable_generation: Optional[List[float]] = Field(
