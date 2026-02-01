@@ -82,14 +82,14 @@ print("=" * 72)
 # --- ModelType enum ---
 print("\n[1/5] ModelType enum")
 for mt in ModelType:
-    print(f"       {mt.name:25s} → value = \"{mt.value}\"")
+    print(f"       {mt.name:25s} -> value = \"{mt.value}\"")
 
 # We can construct from string
 assert ModelType("III-renew") is ModelType.MODEL_III_RENEW
-print("       ✓  ModelType('III-renew') works")
+print("       [ok]  ModelType('III-renew') works")
 
 # --- OptimizationInput ---
-print("\n[2/5] OptimizationInput — default battery parameters")
+print("\n[2/5] OptimizationInput -- default battery parameters")
 dummy_prices_15 = [50.0] * 192
 dummy_prices_4h = [100.0] * 12
 
@@ -157,7 +157,7 @@ print(f"       net_profit = {mock_result.net_profit:.2f} EUR")
 print(f"       status     = {mock_result.status}")
 print(f"       model      = {mock_result.model_type.value}")
 
-print("\n[OK] All 5 Pydantic models construct correctly ✓")
+print("\n[OK] All 5 Pydantic models construct correctly [ok]")
 
 # %%
 # ============================================================================
@@ -196,9 +196,9 @@ base_kwargs = dict(
 for label, override in checks:
     try:
         OptimizationInput(**{**base_kwargs, **override})
-        print(f"       FAIL — {label} was NOT rejected")
+        print(f"       FAIL -- {label} was NOT rejected")
     except ValidationError:
-        print(f"       ✓  {label} correctly rejected")
+        print(f"       [ok]  {label} correctly rejected")
 
 # --- JSON round-trip ---
 print("\n[JSON Round-trip]")
@@ -206,15 +206,15 @@ json_str = opt_in.model_dump_json()
 restored = OptimizationInput.model_validate_json(json_str)
 assert restored.da_prices == opt_in.da_prices
 assert restored.model_type == opt_in.model_type
-print(f"       ✓  OptimizationInput  →  JSON ({len(json_str):,} bytes)  →  OptimizationInput")
+print(f"       [ok]  OptimizationInput  ->  JSON ({len(json_str):,} bytes)  ->  OptimizationInput")
 
 json_str2 = mock_result.model_dump_json()
 restored2 = OptimizationResult.model_validate_json(json_str2)
 assert restored2.objective_value == mock_result.objective_value
 assert restored2.schedule[0].action == "discharge"
-print(f"       ✓  OptimizationResult →  JSON ({len(json_str2):,} bytes)  →  OptimizationResult")
+print(f"       [ok]  OptimizationResult ->  JSON ({len(json_str2):,} bytes)  ->  OptimizationResult")
 
-print("\n[OK] Validation & serialisation verified ✓")
+print("\n[OK] Validation & serialisation verified [ok]")
 
 # %%
 # ============================================================================
@@ -244,9 +244,9 @@ data_slice.reset_index(drop=True, inplace=True)
 print(f"\n[OK] Loaded {COUNTRY} data: {len(full_data):,} total rows")
 print(f"     Extracted {len(data_slice)} rows ({HORIZON_HOURS}h) starting step {START_STEP}")
 print(f"\n     DA price range:   {data_slice['price_day_ahead'].min():.2f}"
-      f" – {data_slice['price_day_ahead'].max():.2f} EUR/MWh")
+      f" - {data_slice['price_day_ahead'].max():.2f} EUR/MWh")
 print(f"     FCR price range:  {data_slice['price_fcr'].min():.2f}"
-      f" – {data_slice['price_fcr'].max():.2f} EUR/MW")
+      f" - {data_slice['price_fcr'].max():.2f} EUR/MW")
 print(f"     Columns: {list(data_slice.columns[:8])}  ...")
 
 # %%
@@ -266,15 +266,17 @@ print("=" * 72)
 adapter = DataAdapter()
 
 # --- Path A: adapt() ---
-print("\n[Path A] adapt(market_prices_dict) → OptimizationInput")
+print("\n[Path A] adapt(market_prices_dict) -> OptimizationInput")
 
 n = HORIZON_HOURS * 4   # 96 for 24h
 n_blocks = HORIZON_HOURS // 4  # 6 for 24h
 
 market_prices = {
     "day_ahead":        list(data_slice["price_day_ahead"].values),
-    "afrr_energy_pos":  list(data_slice["price_afrr_energy_pos"].fillna(0).values),
-    "afrr_energy_neg":  list(data_slice["price_afrr_energy_neg"].fillna(0).values),
+    # IMPORTANT: Keep NaN for aFRR energy — NaN means "market not activated"
+    # Converting to 0 would let the optimizer treat non-activated periods as free energy
+    "afrr_energy_pos":  [float(x) for x in data_slice["price_afrr_energy_pos"].values],
+    "afrr_energy_neg":  [float(x) for x in data_slice["price_afrr_energy_neg"].values],
     "fcr":              [float(data_slice.loc[data_slice["block_id"] == b, "price_fcr"].iloc[0])
                          for b in sorted(data_slice["block_id"].unique())],
     "afrr_capacity_pos": [float(data_slice.loc[data_slice["block_id"] == b, "price_afrr_pos"].iloc[0])
@@ -293,7 +295,7 @@ print(f"     model_type              = {opt_input.model_type.value}")
 print(f"     renewable_generation    = {opt_input.renewable_generation}")
 
 # --- Path B: to_country_data() ---
-print("\n[Path B] to_country_data(opt_input) → DataFrame")
+print("\n[Path B] to_country_data(opt_input) -> DataFrame")
 country_df = adapter.to_country_data(opt_input)
 
 print(f"     Shape:   {country_df.shape}")
@@ -305,10 +307,10 @@ print(f"     DA price sample (first 4): {list(country_df['price_day_ahead'].head
 orig_da = list(data_slice["price_day_ahead"].values[:4])
 conv_da = list(country_df["price_day_ahead"].values[:4])
 match = all(abs(a - b) < 0.01 for a, b in zip(orig_da, conv_da))
-print(f"\n     DA prices match original? {match}  ✓" if match else
-      f"\n     DA prices match original? {match}  ✗ MISMATCH!")
+print(f"\n     DA prices match original? {match}  [ok]" if match else
+      f"\n     DA prices match original? {match}  [FAIL] MISMATCH!")
 
-print("\n[OK] DataAdapter verified ✓")
+print("\n[OK] DataAdapter verified [ok]")
 
 # %%
 # ============================================================================
@@ -326,6 +328,29 @@ print("=" * 72)
 C_RATE = 0.5
 ALPHA = 1.0
 
+# ---------------------------------------------------------------------------
+# Solver selection — auto-detect picks Gurobi first, but its free license has
+# a variable limit (~2000).  Model III with 24h data has ~3700 variables.
+# Override here to use CPLEX / HiGHS / CBC which have no size restrictions.
+# Set to None to use auto-detection (works if Gurobi has a full license).
+# ---------------------------------------------------------------------------
+import pyomo.environ as pyo
+
+def _detect_working_solver():
+    """Pick the first solver that is both installed and has no license limit."""
+    for name in ['cplex', 'appsi_highs', 'highs', 'cbc', 'glpk']:
+        try:
+            s = pyo.SolverFactory(name)
+            if s.available():
+                return name
+        except Exception:
+            continue
+    return None
+
+SOLVER_NAME = _detect_working_solver()
+print(f"\n[SOLVER] Using: {SOLVER_NAME}"
+      f"  (override SOLVER_NAME in Cell 6 if needed)\n")
+
 optimizer_iii = BESSOptimizerModelIII(alpha=ALPHA)
 
 print(f"\n[BUILD] Building Model III (c_rate={C_RATE}, alpha={ALPHA})...")
@@ -338,27 +363,34 @@ print(f"        Build time:  {build_time:.2f}s")
 
 print(f"\n[SOLVE] Solving Model III ...")
 t0 = time.time()
-model_iii_solved, results_iii = optimizer_iii.solve_model(model_iii)
+model_iii_solved, results_iii = optimizer_iii.solve_model(model_iii, solver_name=SOLVER_NAME)
 solve_time_iii = time.time() - t0
 print(f"        Solve time:  {solve_time_iii:.2f}s")
 
 solution_iii = optimizer_iii.extract_solution(model_iii_solved, results_iii)
 print(f"        Status:      {solution_iii['status']}")
-print(f"        Objective:   {solution_iii['objective_value']:.2f} EUR")
 
-if 'profit_da' in solution_iii:
-    print(f"\n        Revenue Breakdown:")
-    print(f"          DA arbitrage:   {solution_iii.get('profit_da', 0):.2f} EUR")
-    print(f"          aFRR energy:    {solution_iii.get('profit_afrr_energy', 0):.2f} EUR")
-    print(f"          AS capacity:    {solution_iii.get('profit_as_capacity', 0):.2f} EUR")
-    if 'degradation_metrics' in solution_iii:
-        dm = solution_iii['degradation_metrics']
-        if 'cost_breakdown' in dm:
-            cb = dm['cost_breakdown']
-            print(f"          Cyclic aging:   -{cb.get('cyclic_eur', 0):.2f} EUR")
-            print(f"          Calendar aging: -{cb.get('calendar_eur', 0):.2f} EUR")
+if solution_iii['status'] not in ('optimal', 'feasible'):
+    print(f"        Termination: {solution_iii.get('termination_condition', 'N/A')}")
+    print(f"        Error:       {solution_iii.get('error', 'N/A')}")
+    print("\n[FAIL] Model III solve failed -- check solver availability and data.")
+    print("       Continuing to next cell...\n")
+else:
+    print(f"        Objective:   {solution_iii['objective_value']:.2f} EUR")
 
-print(f"\n[OK] Model III baseline complete ✓")
+    if 'profit_da' in solution_iii:
+        print(f"\n        Revenue Breakdown:")
+        print(f"          DA arbitrage:   {solution_iii.get('profit_da', 0):.2f} EUR")
+        print(f"          aFRR energy:    {solution_iii.get('profit_afrr_energy', 0):.2f} EUR")
+        print(f"          AS capacity:    {solution_iii.get('profit_as_capacity', 0):.2f} EUR")
+        if 'degradation_metrics' in solution_iii:
+            dm = solution_iii['degradation_metrics']
+            if 'cost_breakdown' in dm:
+                cb = dm['cost_breakdown']
+                print(f"          Cyclic aging:   -{cb.get('cyclic_eur', 0):.2f} EUR")
+                print(f"          Calendar aging: -{cb.get('calendar_eur', 0):.2f} EUR")
+
+    print(f"\n[OK] Model III baseline complete [ok]")
 
 # %%
 # ============================================================================
@@ -413,10 +445,10 @@ print(f"\n     Hourly profile (kW):")
 for h in range(24):
     idx = h * 4
     val = solar_forecast[idx] if idx < len(solar_forecast) else 0
-    bar = "█" * int(val / peak_val * 30) if val > 0 else ""
+    bar = "#" * int(val / peak_val * 30) if val > 0 else ""
     print(f"       {h:02d}:00  {val:7.0f}  {bar}")
 
-print(f"\n[OK] Solar PV profile ready ✓")
+print(f"\n[OK] Solar PV profile ready [ok]")
 
 # %%
 # ============================================================================
@@ -450,48 +482,60 @@ print(f"        Build time:  {build_time_r:.2f}s")
 
 # Compare with baseline
 n_t = len(list(model_iii_solved.T))
-print(f"\n        Δ Variables   vs Model III: +{model_iiir.nvariables() - model_iii_solved.nvariables()}"
-      f"  (expected +{3*n_t} = 3 × {n_t} timesteps)")
-print(f"        Δ Constraints vs Model III: +{model_iiir.nconstraints() - model_iii_solved.nconstraints()}"
-      f"  (expected +{2*n_t} = 2 × {n_t} constraints)")
+print(f"\n        Delta Variables   vs Model III: +{model_iiir.nvariables() - model_iii_solved.nvariables()}"
+      f"  (expected +{3*n_t} = 3 x {n_t} timesteps)")
+print(f"        Delta Constraints vs Model III: +{model_iiir.nconstraints() - model_iii_solved.nconstraints()}"
+      f"  (expected +{2*n_t} = 2 x {n_t} constraints)")
 
 print(f"\n[SOLVE] Solving Model III-Renew ...")
 t0 = time.time()
-model_iiir_solved, results_iiir = optimizer_iiir.solve_model(model_iiir)
+model_iiir_solved, results_iiir = optimizer_iiir.solve_model(model_iiir, solver_name=SOLVER_NAME)
 solve_time_r = time.time() - t0
 print(f"        Solve time:  {solve_time_r:.2f}s")
 
 solution_iiir = optimizer_iiir.extract_solution(model_iiir_solved, results_iiir)
 print(f"        Status:      {solution_iiir['status']}")
-print(f"        Objective:   {solution_iiir['objective_value']:.2f} EUR")
 
-if 'profit_da' in solution_iiir:
-    print(f"\n        Revenue Breakdown:")
-    print(f"          DA arbitrage:     {solution_iiir.get('profit_da', 0):.2f} EUR")
-    print(f"          aFRR energy:      {solution_iiir.get('profit_afrr_energy', 0):.2f} EUR")
-    print(f"          AS capacity:      {solution_iiir.get('profit_as_capacity', 0):.2f} EUR")
-    print(f"          Renewable export: {solution_iiir.get('profit_renewable_export', 0):.2f} EUR  ← NEW")
-    if 'degradation_metrics' in solution_iiir:
-        dm = solution_iiir['degradation_metrics']
-        if 'cost_breakdown' in dm:
-            cb = dm['cost_breakdown']
-            print(f"          Cyclic aging:     -{cb.get('cyclic_eur', 0):.2f} EUR")
-            print(f"          Calendar aging:   -{cb.get('calendar_eur', 0):.2f} EUR")
+if solution_iiir['status'] not in ('optimal', 'feasible'):
+    print(f"        Termination: {solution_iiir.get('termination_condition', 'N/A')}")
+    print(f"        Error:       {solution_iiir.get('error', 'N/A')}")
+    print("\n[FAIL] Model III-Renew solve failed -- check solver availability and data.")
+    print("       Continuing to next cell...\n")
+else:
+    print(f"        Objective:   {solution_iiir['objective_value']:.2f} EUR")
 
-# Renewable utilisation
-if 'renewable_utilization' in solution_iiir:
-    ru = solution_iiir['renewable_utilization']
-    print(f"\n        Renewable Utilisation:")
-    print(f"          Total generation:  {ru['total_generation_kwh']:.1f} kWh")
-    print(f"          Self-consumption:  {ru['self_consumption_kwh']:.1f} kWh"
-          f"  ({ru['self_consumption_kwh']/ru['total_generation_kwh']*100:.1f}%)" if ru['total_generation_kwh'] > 0 else "")
-    print(f"          Grid export:       {ru['export_kwh']:.1f} kWh"
-          f"  ({ru['export_kwh']/ru['total_generation_kwh']*100:.1f}%)" if ru['total_generation_kwh'] > 0 else "")
-    print(f"          Curtailment:       {ru['curtailment_kwh']:.1f} kWh"
-          f"  ({ru['curtailment_kwh']/ru['total_generation_kwh']*100:.1f}%)" if ru['total_generation_kwh'] > 0 else "")
-    print(f"          Utilisation rate:  {ru['utilization_rate']:.1%}")
+    if 'profit_da' in solution_iiir:
+        print(f"\n        Revenue Breakdown:")
+        print(f"          DA arbitrage:     {solution_iiir.get('profit_da', 0):.2f} EUR")
+        print(f"          aFRR energy:      {solution_iiir.get('profit_afrr_energy', 0):.2f} EUR")
+        print(f"          AS capacity:      {solution_iiir.get('profit_as_capacity', 0):.2f} EUR")
+        print(f"          Renewable export: {solution_iiir.get('profit_renewable_export', 0):.2f} EUR  <- NEW")
+        if 'degradation_metrics' in solution_iiir:
+            dm = solution_iiir['degradation_metrics']
+            if 'cost_breakdown' in dm:
+                cb = dm['cost_breakdown']
+                print(f"          Cyclic aging:     -{cb.get('cyclic_eur', 0):.2f} EUR")
+                print(f"          Calendar aging:   -{cb.get('calendar_eur', 0):.2f} EUR")
 
-print(f"\n[OK] Model III-Renew complete ✓")
+    # Renewable utilisation
+    if 'renewable_utilization' in solution_iiir:
+        ru = solution_iiir['renewable_utilization']
+        print(f"\n        Renewable Utilisation:")
+        print(f"          Total generation:  {ru['total_generation_kwh']:.1f} kWh")
+        if ru['total_generation_kwh'] > 0:
+            print(f"          Self-consumption:  {ru['self_consumption_kwh']:.1f} kWh"
+                  f"  ({ru['self_consumption_kwh']/ru['total_generation_kwh']*100:.1f}%)")
+            print(f"          Grid export:       {ru['export_kwh']:.1f} kWh"
+                  f"  ({ru['export_kwh']/ru['total_generation_kwh']*100:.1f}%)")
+            print(f"          Curtailment:       {ru['curtailment_kwh']:.1f} kWh"
+                  f"  ({ru['curtailment_kwh']/ru['total_generation_kwh']*100:.1f}%)")
+        else:
+            print(f"          Self-consumption:  {ru['self_consumption_kwh']:.1f} kWh")
+            print(f"          Grid export:       {ru['export_kwh']:.1f} kWh")
+            print(f"          Curtailment:       {ru['curtailment_kwh']:.1f} kWh")
+        print(f"          Utilisation rate:  {ru['utilization_rate']:.1%}")
+
+    print(f"\n[OK] Model III-Renew complete [ok]")
 
 # %%
 # ============================================================================
@@ -506,43 +550,56 @@ print("=" * 72)
 print("  COMPARISON: Model III  vs  Model III-Renew")
 print("=" * 72)
 
-obj_base = solution_iii['objective_value']
-obj_renew = solution_iiir['objective_value']
-delta = obj_renew - obj_base
+iii_ok = solution_iii['status'] in ('optimal', 'feasible')
+iiir_ok = solution_iiir['status'] in ('optimal', 'feasible')
 
-print(f"""
-    ┌─────────────────────────┬──────────────┬──────────────┬──────────┐
-    │ Metric                  │  Model III   │ III-Renew    │  Δ       │
-    ├─────────────────────────┼──────────────┼──────────────┼──────────┤
-    │ Objective (EUR)         │ {obj_base:>11.2f} │ {obj_renew:>11.2f} │ {delta:>+7.2f} │
-    │ DA profit               │ {solution_iii.get('profit_da',0):>11.2f} │ {solution_iiir.get('profit_da',0):>11.2f} │ {solution_iiir.get('profit_da',0)-solution_iii.get('profit_da',0):>+7.2f} │
-    │ aFRR energy             │ {solution_iii.get('profit_afrr_energy',0):>11.2f} │ {solution_iiir.get('profit_afrr_energy',0):>11.2f} │ {solution_iiir.get('profit_afrr_energy',0)-solution_iii.get('profit_afrr_energy',0):>+7.2f} │
-    │ AS capacity             │ {solution_iii.get('profit_as_capacity',0):>11.2f} │ {solution_iiir.get('profit_as_capacity',0):>11.2f} │ {solution_iiir.get('profit_as_capacity',0)-solution_iii.get('profit_as_capacity',0):>+7.2f} │
-    │ Renewable export        │         n/a │ {solution_iiir.get('profit_renewable_export',0):>11.2f} │   NEW   │
-    │ Solve time (s)          │ {solve_time_iii:>11.2f} │ {solve_time_r:>11.2f} │ {solve_time_r-solve_time_iii:>+7.2f} │
-    │ Variables               │ {model_iii_solved.nvariables():>11,} │ {model_iiir_solved.nvariables():>11,} │ {model_iiir_solved.nvariables()-model_iii_solved.nvariables():>+7,} │
-    │ Constraints             │ {model_iii_solved.nconstraints():>11,} │ {model_iiir_solved.nconstraints():>11,} │ {model_iiir_solved.nconstraints()-model_iii_solved.nconstraints():>+7,} │
-    └─────────────────────────┴──────────────┴──────────────┴──────────┘
+if iii_ok and iiir_ok:
+    obj_base = solution_iii['objective_value']
+    obj_renew = solution_iiir['objective_value']
+    delta = obj_renew - obj_base
+
+    print(f"""
+    +-------------------------+--------------+--------------+----------+
+    | Metric                  |  Model III   | III-Renew    |  Delta   |
+    +-------------------------+--------------+--------------+----------+
+    | Objective (EUR)         | {obj_base:>11.2f} | {obj_renew:>11.2f} | {delta:>+7.2f} |
+    | DA profit               | {solution_iii.get('profit_da',0):>11.2f} | {solution_iiir.get('profit_da',0):>11.2f} | {solution_iiir.get('profit_da',0)-solution_iii.get('profit_da',0):>+7.2f} |
+    | aFRR energy             | {solution_iii.get('profit_afrr_energy',0):>11.2f} | {solution_iiir.get('profit_afrr_energy',0):>11.2f} | {solution_iiir.get('profit_afrr_energy',0)-solution_iii.get('profit_afrr_energy',0):>+7.2f} |
+    | AS capacity             | {solution_iii.get('profit_as_capacity',0):>11.2f} | {solution_iiir.get('profit_as_capacity',0):>11.2f} | {solution_iiir.get('profit_as_capacity',0)-solution_iii.get('profit_as_capacity',0):>+7.2f} |
+    | Renewable export        |         n/a | {solution_iiir.get('profit_renewable_export',0):>11.2f} |   NEW   |
+    | Solve time (s)          | {solve_time_iii:>11.2f} | {solve_time_r:>11.2f} | {solve_time_r-solve_time_iii:>+7.2f} |
+    | Variables               | {model_iii_solved.nvariables():>11,} | {model_iiir_solved.nvariables():>11,} | {model_iiir_solved.nvariables()-model_iii_solved.nvariables():>+7,} |
+    | Constraints             | {model_iii_solved.nconstraints():>11,} | {model_iiir_solved.nconstraints():>11,} | {model_iiir_solved.nconstraints()-model_iii_solved.nconstraints():>+7,} |
+    +-------------------------+--------------+--------------+----------+
 """)
 
-# Verify key invariant: renewable should not decrease total profit
-if delta >= -0.01:
-    print("    ✓  Renewable integration improves or maintains profit")
-else:
-    print("    ✗  WARNING: Renewable decreased profit — investigate!")
-
-if 'renewable_utilization' in solution_iiir:
-    ru = solution_iiir['renewable_utilization']
-    if ru['utilization_rate'] > 0.99:
-        print("    ✓  100% utilisation — zero curtailment (optimal)")
-    elif ru['curtailment_kwh'] < 1.0:
-        print(f"    ✓  {ru['utilization_rate']:.1%} utilisation — near-zero curtailment")
+    # Verify key invariant: renewable should not decrease total profit
+    if delta >= -0.01:
+        print("    [ok]  Renewable integration improves or maintains profit")
     else:
-        print(f"    ⚠  {ru['utilization_rate']:.1%} utilisation — "
-              f"{ru['curtailment_kwh']:.1f} kWh curtailed")
+        print("    [FAIL]  WARNING: Renewable decreased profit -- investigate!")
+
+    if 'renewable_utilization' in solution_iiir:
+        ru = solution_iiir['renewable_utilization']
+        if ru['utilization_rate'] > 0.99:
+            print("    [ok]  100% utilisation -- zero curtailment (optimal)")
+        elif ru['curtailment_kwh'] < 1.0:
+            print(f"    [ok]  {ru['utilization_rate']:.1%} utilisation -- near-zero curtailment")
+        else:
+            print(f"    [WARN]  {ru['utilization_rate']:.1%} utilisation -- "
+                  f"{ru['curtailment_kwh']:.1f} kWh curtailed")
+else:
+    print("\n    Cannot compare -- one or both solves failed:")
+    print(f"      Model III:       {solution_iii['status']}"
+          f" ({solution_iii.get('termination_condition', 'N/A')})")
+    print(f"      Model III-Renew: {solution_iiir['status']}"
+          f" ({solution_iiir.get('termination_condition', 'N/A')})")
 
 print("\n" + "=" * 72)
-print("  ALL PHASE 1 + PHASE 2 VALIDATIONS PASSED")
+if iii_ok and iiir_ok:
+    print("  ALL PHASE 1 + PHASE 2 VALIDATIONS PASSED")
+else:
+    print("  PHASE 1 VALIDATIONS PASSED / PHASE 2 SOLVE NEEDS INVESTIGATION")
 print("=" * 72)
 
 # %%
@@ -558,7 +615,7 @@ print("=" * 72)
 #
 
 print("=" * 72)
-print("  BONUS: Full Adapter → Optimizer Pipeline")
+print("  BONUS: Full Adapter -> Optimizer Pipeline")
 print("=" * 72)
 
 # Step 1: Prepare service dicts (simulating Module A + Module B output)
@@ -575,7 +632,7 @@ battery_config_dict = {
 }
 
 # Step 2: adapt() → OptimizationInput
-print("[Step 2] DataAdapter.adapt() → OptimizationInput ...")
+print("[Step 2] DataAdapter.adapt() -> OptimizationInput ...")
 opt_input_full = adapter.adapt(
     market_prices_dict,
     generation_forecast=generation_dict,
@@ -586,20 +643,26 @@ print(f"         model_type  = {opt_input_full.model_type.value}")
 print(f"         renewable   = {len(opt_input_full.renewable_generation)} values")
 
 # Step 3: to_country_data() → DataFrame
-print("[Step 3] DataAdapter.to_country_data() → DataFrame ...")
+print("[Step 3] DataAdapter.to_country_data() -> DataFrame ...")
 country_df_full = adapter.to_country_data(opt_input_full)
 print(f"         Shape       = {country_df_full.shape}")
 print(f"         Has renewable col = {'p_renewable_forecast_kw' in country_df_full.columns}")
 
 # Step 4: Optimise
-print("[Step 4] BESSOptimizerModelIIIRenew.build → solve → extract ...")
+print("[Step 4] BESSOptimizerModelIIIRenew.build -> solve -> extract ...")
 opt_pipeline = BESSOptimizerModelIIIRenew(alpha=ALPHA)
 model_p = opt_pipeline.build_optimization_model(country_df_full, c_rate=C_RATE)
-_, results_p = opt_pipeline.solve_model(model_p)
-sol_p = opt_pipeline.extract_solution(_, results_p)
+model_p_solved, results_p = opt_pipeline.solve_model(model_p, solver_name=SOLVER_NAME)
+sol_p = opt_pipeline.extract_solution(model_p_solved, results_p)
 print(f"         Status      = {sol_p['status']}")
-print(f"         Objective   = {sol_p['objective_value']:.2f} EUR")
-print(f"         Export rev  = {sol_p.get('profit_renewable_export', 0):.2f} EUR")
 
-print("\n[OK] Full pipeline: service dicts → DataAdapter → Optimizer → Result  ✓")
-print("     This is exactly the flow that OptimizerService (Phase 3) will use.")
+if sol_p['status'] in ('optimal', 'feasible'):
+    print(f"         Objective   = {sol_p['objective_value']:.2f} EUR")
+    print(f"         Export rev  = {sol_p.get('profit_renewable_export', 0):.2f} EUR")
+    print("\n[OK] Full pipeline: service dicts -> DataAdapter -> Optimizer -> Result  [ok]")
+    print("     This is exactly the flow that OptimizerService (Phase 3) will use.")
+else:
+    print(f"         Termination = {sol_p.get('termination_condition', 'N/A')}")
+    print("\n[FAIL] Pipeline solve failed -- see Cell 6 diagnostics.")
+
+# %%

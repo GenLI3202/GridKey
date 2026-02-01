@@ -11,9 +11,11 @@ The resulting DataFrame has exactly the columns expected by
 """
 
 import logging
+import math
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from .models import ModelType, OptimizationInput
@@ -153,6 +155,14 @@ class DataAdapter:
         df['price_afrr_energy_pos'] = opt_input.afrr_energy_pos[:n_timesteps]
         df['price_afrr_energy_neg'] = opt_input.afrr_energy_neg[:n_timesteps]
 
+        # CRITICAL: aFRR energy price = 0 means "market NOT activated", not
+        # "free energy".  Convert 0 -> NaN so the optimizer's Cst-0 constraint
+        # forces bids to zero in non-activated periods and prevents false
+        # arbitrage.  This mirrors the same preprocessing applied in
+        # _extract_country_from_wide_tables() and optimizer.extract_country_data().
+        df['price_afrr_energy_pos'] = df['price_afrr_energy_pos'].replace(0, np.nan)
+        df['price_afrr_energy_neg'] = df['price_afrr_energy_neg'].replace(0, np.nan)
+
         # -- 4-hour block prices (forward-fill to 15-min) -----------------
         df['price_fcr'] = self._expand_block_prices(
             opt_input.fcr_prices, n_timesteps
@@ -216,11 +226,16 @@ class DataAdapter:
 
     @staticmethod
     def _extract_15min_prices(market_prices: Dict, key: str) -> List[float]:
-        """Extract and validate 15-min resolution prices from service dict."""
+        """Extract and validate 15-min resolution prices from service dict.
+
+        ``None`` values (e.g. from JSON ``null``) are converted to
+        ``float('nan')`` so they survive Pydantic ``List[float]`` validation
+        and propagate as NaN through the optimizer pipeline.
+        """
         prices = market_prices.get(key, [])
         if not prices:
             raise ValueError(f"Missing or empty 15-min prices for key '{key}'")
-        return [float(p) for p in prices]
+        return [float('nan') if p is None else float(p) for p in prices]
 
     @staticmethod
     def _extract_block_prices(market_prices: Dict, key: str) -> List[float]:
