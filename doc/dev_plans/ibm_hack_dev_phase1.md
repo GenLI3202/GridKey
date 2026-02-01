@@ -21,7 +21,7 @@ from datetime import datetime
 from enum import Enum
 
 
-classModelType(str, Enum):
+class ModelType(str, Enum):
 
     MODEL_I = "I"
 
@@ -32,7 +32,7 @@ classModelType(str, Enum):
     MODEL_III_RENEW = "III-renew"  # Model III + Renewable Integration
 
 
-classOptimizationInput(BaseModel):
+class OptimizationInput(BaseModel):
 
     """Standardised optimizer input (Section 6.5 of Blueprint)."""
 
@@ -96,7 +96,7 @@ classOptimizationInput(BaseModel):
 
 
 
-classScheduleEntry(BaseModel):
+class ScheduleEntry(BaseModel):
 
     """Single timestep schedule item (Section 6.5 of Blueprint)."""
 
@@ -130,7 +130,7 @@ classScheduleEntry(BaseModel):
 
 
 
-classRenewableUtilization(BaseModel):
+class RenewableUtilization(BaseModel):
 
     """Renewable energy utilization breakdown."""
 
@@ -148,7 +148,7 @@ classRenewableUtilization(BaseModel):
 
 
 
-classOptimizationResult(BaseModel):
+class OptimizationResult(BaseModel):
 
     """Standardised optimizer output (Section 6.5 of Blueprint)."""
 
