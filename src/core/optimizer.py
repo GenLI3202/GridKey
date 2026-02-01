@@ -927,20 +927,38 @@ class BESSOptimizerModelI:
     def detect_available_solver(self) -> str:
         """
         Detect the best available solver with fallback logic.
-        
-        Priority order (per competition requirements):
-        1. CPLEX (commercial) - if available in submission system
-        2. Gurobi (commercial) - if available in submission system
-        3. HiGHS (open-source) - REQUIRED fallback for competition submission
-        
+
+        Priority order:
+        1. Environment variable GRIDKEY_SOLVER if set (for explicit control)
+        2. CPLEX (commercial) - preferred local solver
+        3. Gurobi (commercial) - fallback if CPLEX unavailable
+        4. HiGHS (open-source) - REQUIRED for production API (no license needed)
+
+        Production API Note:
+            For Docker/container deployments, use HiGHS as it requires no license.
+            Set GRIDKEY_SOLVER=highs in Dockerfile or environment.
+
         Returns:
             str: Name of the best available solver
         """
-        # Priority order: Try commercial first, fallback to open-source HiGHS
+        import os
+
+        # Check for explicit solver preference via environment variable
+        preferred_solver = os.environ.get('GRIDKEY_SOLVER', '').lower()
+        if preferred_solver:
+            logger.info(f"🎯 GRIDKEY_SOLVER environment variable set: {preferred_solver}")
+            solver = pyo.SolverFactory(preferred_solver)
+            if solver.available():
+                logger.info(f"✅ Using preferred solver: {preferred_solver}")
+                return preferred_solver
+            else:
+                logger.warning(f"⚠️  Preferred solver '{preferred_solver}' not available, falling back to auto-detection")
+
+        # Priority order for local development: CPLEX > Gurobi > HiGHS
         solver_priority = [
-            ('gurobi', 'Gurobi (commercial)'),            
             ('cplex', 'CPLEX (commercial)'),
-            ('highs', 'HiGHS (open-source, competition approved)')
+            ('gurobi', 'Gurobi (commercial)'),
+            ('highs', 'HiGHS (open-source, production-ready)')
         ]
         
         logger.info("🔍 Detecting available optimization solver...")
@@ -2391,6 +2409,297 @@ class BESSOptimizerModelIII(BESSOptimizerModelII):
 
 
 # ============================================================================
+# MODEL III-RENEW: Renewable Integration
+# ============================================================================
+
+class BESSOptimizerModelIIIRenew(BESSOptimizerModelIII):
+    """Model III + Simplified Renewable Power Plant Integration.
+
+    Extends Model III (cyclic + calendar aging) with renewable generation
+    variables and constraints per Blueprint Section 6.4.
+
+    New Decision Variables:
+        - p_renewable_self[t]:    Self-consumption power (kW) — charges battery
+        - p_renewable_export[t]:  Grid export power (kW) — sold at DA price
+        - p_renewable_curtail[t]: Curtailed power (kW) — wasted
+
+    New Constraints:
+        - Cst-R1: P_renewable[t] = P_self[t] + P_export[t] + P_curtail[t]
+        - Cst-R2: p_total_ch[t] = p_ch[t] + p_afrr_neg_e[t] + p_renewable_self[t]
+
+    New Revenue:
+        - R_export = Σₜ P_renewable_export[t] * P_DA[t] / 1000 * dt
+    """
+
+    def __init__(self, **kwargs) -> None:
+        """Initialize Model III-Renew.
+
+        Args:
+            **kwargs: All arguments forwarded to BESSOptimizerModelIII.__init__
+                (config, degradation_config_path, alpha,
+                 require_sequential_segment_activation, use_afrr_ev_weighting)
+        """
+        super().__init__(**kwargs)
+        logger.info("BESSOptimizerModelIIIRenew initialized (Model III + Renewable)")
+
+    def build_optimization_model(
+        self,
+        country_data: pd.DataFrame,
+        c_rate: float,
+        daily_cycle_limit: Optional[float] = None,
+    ) -> pyo.ConcreteModel:
+        """Build Model III-Renew with renewable integration.
+
+        Extends Model III by adding renewable self-consumption, export, and
+        curtailment variables. Renewable data is read from the
+        ``p_renewable_forecast_kw`` column of *country_data*.
+
+        If the column is missing or all-null the method falls back to plain
+        Model III (no renewable variables are added).
+
+        Args:
+            country_data: Market price data, optionally including
+                ``p_renewable_forecast_kw`` column (kW, 15-min resolution)
+            c_rate: C-rate configuration
+            daily_cycle_limit: Ignored (kept for API compat)
+
+        Returns:
+            Pyomo ConcreteModel with renewable integration
+        """
+        # Build full Model III first
+        model = super().build_optimization_model(country_data, c_rate, daily_cycle_limit)
+
+        # ------------------------------------------------------------------
+        # Check for renewable forecast data
+        # ------------------------------------------------------------------
+        has_renewable = (
+            'p_renewable_forecast_kw' in country_data.columns
+            and not country_data['p_renewable_forecast_kw'].isna().all()
+        )
+
+        if not has_renewable:
+            logger.warning(
+                "No renewable forecast data in country_data. "
+                "Running as plain Model III."
+            )
+            return model
+
+        logger.info("Extending Model III to Model III-Renew with renewable integration...")
+
+        T_data = list(range(len(country_data)))
+
+        # ------------------------------------------------------------------
+        # New Parameter: Renewable generation forecast (kW)
+        # ------------------------------------------------------------------
+        renewable_forecast = {
+            t: (
+                float(country_data['p_renewable_forecast_kw'].iloc[t])
+                if not pd.isna(country_data['p_renewable_forecast_kw'].iloc[t])
+                else 0.0
+            )
+            for t in T_data
+        }
+
+        model.P_renewable = pyo.Param(
+            model.T,
+            initialize=renewable_forecast,
+            doc="Renewable generation forecast (kW)"
+        )
+
+        # ------------------------------------------------------------------
+        # New Variables: Renewable power allocation (kW)
+        # ------------------------------------------------------------------
+        model.p_renewable_self = pyo.Var(
+            model.T,
+            domain=pyo.NonNegativeReals,
+            doc="Self-consumption renewable power — charges battery (kW)"
+        )
+
+        model.p_renewable_export = pyo.Var(
+            model.T,
+            domain=pyo.NonNegativeReals,
+            doc="Exported renewable power — sold at DA price (kW)"
+        )
+
+        model.p_renewable_curtail = pyo.Var(
+            model.T,
+            domain=pyo.NonNegativeReals,
+            doc="Curtailed renewable power — wasted (kW)"
+        )
+
+        logger.info(
+            "Added 3×%d renewable variables (%d timesteps)",
+            len(T_data), len(T_data)
+        )
+
+        # ------------------------------------------------------------------
+        # Cst-R1: Renewable Balance
+        #   P_self[t] + P_export[t] + P_curtail[t] == P_renewable[t]
+        # ------------------------------------------------------------------
+        def renewable_balance_rule(m, t):
+            return (
+                m.p_renewable_self[t]
+                + m.p_renewable_export[t]
+                + m.p_renewable_curtail[t]
+                == m.P_renewable[t]
+            )
+
+        model.renewable_balance = pyo.Constraint(
+            model.T,
+            rule=renewable_balance_rule,
+            doc="Cst-R1: Renewable generation must be fully allocated"
+        )
+
+        # ------------------------------------------------------------------
+        # Cst-R2: Modified Total Charging Definition
+        #   p_total_ch[t] == p_ch[t] + p_afrr_neg_e[t] + p_renewable_self[t]
+        #
+        # The existing total_charge_aggregation (Model II) still holds:
+        #   p_total_ch[t] == Σⱼ p_ch_j[t,j]
+        # Together these route renewable self-consumption through the
+        # battery segments for correct degradation accounting.
+        # ------------------------------------------------------------------
+        model.del_component(model.total_ch_def)
+
+        def total_ch_def_renew_rule(m, t):
+            return m.p_total_ch[t] == m.p_ch[t] + m.p_afrr_neg_e[t] + m.p_renewable_self[t]
+
+        model.total_ch_def = pyo.Constraint(
+            model.T,
+            rule=total_ch_def_renew_rule,
+            doc="Cst-R2: Total charging = DA + aFRR-E neg + renewable self-consumption"
+        )
+
+        # ------------------------------------------------------------------
+        # Cst-R3: Export Revenue and Objective Update
+        #   R_export = Σₜ p_renewable_export[t] * P_DA[t] / 1000 * dt
+        # ------------------------------------------------------------------
+        profit_export = sum(
+            model.p_renewable_export[t] * model.P_DA[t] / 1000 * model.dt
+            for t in model.T
+        )
+
+        model.profit_renewable_export = pyo.Expression(
+            expr=profit_export,
+            doc="Revenue from exporting renewable power at DA price (EUR)"
+        )
+
+        # Replace objective: add export revenue
+        parent_objective_expr = model.objective.expr
+        model.del_component(model.objective)
+
+        model.objective = pyo.Objective(
+            expr=parent_objective_expr + profit_export,
+            sense=pyo.maximize,
+            doc="Maximize profit + renewable export revenue - degradation cost"
+        )
+
+        logger.info(
+            "Added %d renewable constraints (balance + modified total_ch_def)",
+            len(model.T) * 2
+        )
+
+        # ------------------------------------------------------------------
+        # Model Summary
+        # ------------------------------------------------------------------
+        logger.info("Model III-Renew build complete:")
+        logger.info("  - Variables: %s", f"{model.nvariables():,}")
+        logger.info("  - Constraints: %s", f"{model.nconstraints():,}")
+
+        return model
+
+    def extract_solution(
+        self, model: pyo.ConcreteModel, solver_results: Any
+    ) -> Dict[str, Any]:
+        """Extract solution including renewable variables.
+
+        Extends Model III extract_solution with:
+        - Per-timestep renewable power allocation
+        - Renewable export revenue
+        - Renewable utilization summary
+
+        Args:
+            model: Solved Model III-Renew Pyomo model
+            solver_results: Results object from solver.solve()
+
+        Returns:
+            Dict with all Model III fields plus renewable results
+        """
+        solution_dict = super().extract_solution(model, solver_results)
+
+        # Early exit if solve failed
+        if solution_dict.get('status') not in ('optimal', 'feasible'):
+            return solution_dict
+
+        # Skip if model has no renewable variables (fallback case)
+        if not hasattr(model, 'p_renewable_self'):
+            return solution_dict
+
+        def _safe_value(component):
+            try:
+                return pyo.value(component)
+            except (TypeError, ValueError):
+                return None
+
+        dt = pyo.value(model.dt)
+
+        # Extract per-timestep renewable variables
+        solution_dict['p_renewable_self'] = {}
+        solution_dict['p_renewable_export'] = {}
+        solution_dict['p_renewable_curtail'] = {}
+        solution_dict['revenue_renewable_export'] = {}
+
+        total_self_kwh = 0.0
+        total_export_kwh = 0.0
+        total_curtail_kwh = 0.0
+        total_generation_kwh = 0.0
+
+        for t in model.T:
+            p_self = _safe_value(model.p_renewable_self[t]) or 0.0
+            p_export = _safe_value(model.p_renewable_export[t]) or 0.0
+            p_curtail = _safe_value(model.p_renewable_curtail[t]) or 0.0
+            p_gen = _safe_value(model.P_renewable[t]) or 0.0
+            da_price = _safe_value(model.P_DA[t]) or 0.0
+
+            solution_dict['p_renewable_self'][t] = p_self
+            solution_dict['p_renewable_export'][t] = p_export
+            solution_dict['p_renewable_curtail'][t] = p_curtail
+
+            # Per-timestep export revenue (EUR)
+            revenue_export_t = p_export * da_price / 1000 * dt
+            solution_dict['revenue_renewable_export'][t] = revenue_export_t
+
+            # Accumulate energy totals (kW * h = kWh)
+            total_self_kwh += p_self * dt
+            total_export_kwh += p_export * dt
+            total_curtail_kwh += p_curtail * dt
+            total_generation_kwh += p_gen * dt
+
+        # Total export revenue
+        profit_export = _safe_value(model.profit_renewable_export) or 0.0
+        solution_dict['profit_renewable_export'] = profit_export
+
+        # Renewable utilization summary
+        solution_dict['renewable_utilization'] = {
+            'total_generation_kwh': total_generation_kwh,
+            'self_consumption_kwh': total_self_kwh,
+            'export_kwh': total_export_kwh,
+            'curtailment_kwh': total_curtail_kwh,
+            'utilization_rate': (
+                (total_self_kwh + total_export_kwh) / total_generation_kwh
+                if total_generation_kwh > 0 else 0.0
+            ),
+        }
+
+        logger.info("Renewable utilization: %.1f%% (self=%.1f kWh, export=%.1f kWh, curtail=%.1f kWh)",
+                     solution_dict['renewable_utilization']['utilization_rate'] * 100,
+                     total_self_kwh, total_export_kwh, total_curtail_kwh)
+        logger.info("Renewable export revenue: %.2f EUR", profit_export)
+
+        return solution_dict
+
+
+# ============================================================================
 # BACKWARD COMPATIBILITY ALIASES
 # ============================================================================
 # Maintain backward compatibility with existing code that uses old names
@@ -2405,6 +2714,7 @@ BESSOptimizerV4 = BESSOptimizerModelIII  # Version-based alias for full model (c
 BESSOptimizer_Phase2_ModelI = BESSOptimizerModelI  # Explicit Phase II Model (i) reference
 BESSOptimizer_Phase2_ModelII = BESSOptimizerModelII  # Explicit Phase II Model (ii) reference
 BESSOptimizer_Phase2_ModelIII = BESSOptimizerModelIII  # Explicit Phase II Model (iii) reference
+BESSOptimizer_Phase2_ModelIIIRenew = BESSOptimizerModelIIIRenew  # Model (iii) + renewable integration
 
 if __name__ == "__main__":
     # Example usage - Model (i)

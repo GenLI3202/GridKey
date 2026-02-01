@@ -14,6 +14,8 @@ from .optimizer import (
     BESSOptimizerModelII,
     BESSOptimizerV3,
     BESSOptimizer_Phase2_ModelII,
+    BESSOptimizerModelIII,
+    BESSOptimizerModelIIIRenew,
 )
 from ..data.exceptions import (
     DataProcessingError,
@@ -28,6 +30,8 @@ __all__ = [
     'BESSOptimizerModelII',
     'BESSOptimizerV3',
     'BESSOptimizer_Phase2_ModelII',
+    'BESSOptimizerModelIII',
+    'BESSOptimizerModelIIIRenew',
     'DataProcessingError',
     'DataLoadingError',
     'DataValidationError',

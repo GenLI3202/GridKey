@@ -1,24 +1,42 @@
-# CLAUDE.md
+# GEMINI.md
 
 This file provides guidance to GEMINI CLI when working with code in this repository. To understand the ultimate purpose and structure of the project, please refer to `doc\whole_project_description.md`.
 
 ## Project Context
 
-This is the Huawei TechArena 2025 BESS (Battery Energy Storage System) optimizer project for optimizing battery operations across European electricity markets. The system uses Mixed-Integer Linear Programming (MILP) to maximize profitability while managing battery degradation.
+This project originated as the **Huawei TechArena 2025 BESS (Battery Energy Storage System) optimizer** for optimizing battery operations across European electricity markets. The system uses Mixed-Integer Linear Programming (MILP) to maximize profitability while managing battery degradation.
+
+**Current Development:** The project is being upgraded for the **IBM Dev Day Hackathon** as part of the **GridKey WatsonX Blueprint**. See `doc/dev_plans/ibm_hack_dev_plan.md` for the Module D implementation plan.
 
 ## Architecture Overview
 
 ### Core Model Hierarchy
-The project implements three progressive optimization models:
+The project implements four progressive optimization models:
 - **Model I** (`BESSOptimizerModelI`): Base 4-market optimization (DA, FCR, aFRR capacity, aFRR energy)
 - **Model II** (`BESSOptimizerModelII`): Model I + cyclic aging cost
-- **Model III** (`BESSOptimizerModelIII`): Model II + calendar aging cost (full Phase II model)
+- **Model III** (`BESSOptimizerModelIII`): Model II + calendar aging cost
+- **Model III-renew** (`BESSOptimizerModelIIIRenew`): Model III + renewable integration (**NEW - in development**)
 
-### Key Components
-- **py_script/core/optimizer.py**: Main optimization models using Pyomo MILP framework
-- **py_script/data/market_data.py**: Market data loading and transformation
-- **py_script/data/preprocessing.py**: Critical preprocessing for aFRR energy markets (0->NaN conversion)
-- **py_script/visualization/**: Plotting utilities for results analysis
+### Key Components (Legacy)
+- **src/core/optimizer.py**: Main optimization models using Pyomo MILP framework
+- **src/data/market_data.py**: Market data loading and transformation
+- **src/data/preprocessing.py**: Critical preprocessing for aFRR energy markets (0->NaN conversion)
+- **src/visualization/**: Plotting utilities for results analysis
+
+### Key Components (Module D - In Development)
+- **src/service/models.py**: Pydantic data models for API I/O
+- **src/service/adapter.py**: DataAdapter for format conversion
+- **src/service/optimizer_service.py**: OptimizerService wrapper
+- **src/api/main.py**: FastAPI endpoints
+
+### Data Format Specifications
+- **Input Format**: `data/optimizer_input_template.json`
+- **Output Format**: `data/optimizer_output_template.json`
+
+### Development Plans
+- **Main Plan**: `doc/dev_plans/ibm_hack_dev_plan.md`
+- **Phase 1-4 Details**: `doc/dev_plans/ibm_hack_dev_phase{1,2,3,4}.md`
+- **Agent Prompts**: `doc/dev_plans/coding_agent_prompts.md`
 
 ## Critical Data Processing
 

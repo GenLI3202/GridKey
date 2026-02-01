@@ -1,0 +1,39 @@
+# GridKey Docker Ignore Rules
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Notebooks and Data (Don't bundle large data or experiments)
+notebook/
+dump/
+validation_results/
+data/*.xlsx
+data/*.csv
+!data/optimizer_input_template.json
+!data/optimizer_output_template.json
+!data/p2_config/*.json
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+.gitattributes

@@ -121,7 +121,7 @@ CONFIGURATION NOTES:
 TEST_COUNTRY = "CZ"                 # Options: DE_LU, AT, CH, HU, CZ
 TEST_C_RATE = 0.5                   # Options: 0.25, 0.33, 0.5
 TEST_ALPHA = 1.0                    # Degradation weight
-TEST_TIME_HORIZON_HOURS = 12        # Time horizon in hours (24h feasible with 6-segment config)
+TEST_TIME_HORIZON_HOURS = 3        # Time horizon in hours (24h feasible with 6-segment config)
 TEST_START_STEP = int(96*132)         # Starting time step (96 = 1 day in 15-min intervals) (May 12th of CZ has interesting negative da prices)
 TEST_MODEL = "III"                  # Options: "I", "II", "III"
 USE_EV_WEIGHTING = True            # Enable aFRR EV weighting
@@ -257,6 +257,7 @@ if TEST_MODEL in ['II', 'III']:
     print(f"  LIFO Epsilon: {optimizer.degradation_params.get('lifo_epsilon_kwh', 'N/A')} kWh")
     print(f"  Sequential Activation: {optimizer.degradation_params.get('require_sequential_segment_activation', 'N/A')}")
 
+
 # %%
 # ============================================================================
 # BUILD OPTIMIZATION MODEL
@@ -271,6 +272,11 @@ build_time = time.time() - build_start
 print(f"[OK] Model built in {build_time:.2f} seconds")
 print(f"Variables:   {model.nvariables()}")
 print(f"Constraints: {model.nconstraints()}")
+
+# %%
+# store data_slice as json
+data_slice.to_json("data_slice.json")
+
 
 # %%
 # ============================================================================
@@ -327,8 +333,8 @@ print(f"\n[INFO] Solution DataFrame: {solution_df.shape}")
 # ============================================================================
 # INSPECT SOLUTION (INTERACTIVE)
 # ============================================================================
-
-solution_df
+# save solution to json file
+solution_df.to_json("solution.json", orient="records")
 
 # %%
 # ============================================================================

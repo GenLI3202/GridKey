@@ -1,0 +1,12 @@
+# API & Web Service Dependencies
+
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+pydantic>=2.0.0
+python-multipart>=0.0.6
+
+# Health checks and monitoring
+httpx>=0.24.0
+
+# Optional: Rate limiting
+slowapi>=0.1.8
