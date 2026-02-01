@@ -1,0 +1,5 @@
+Requirement already satisfied: pydantic in c:\users\lg897\miniconda3\lib\site-packages (2.12.4)
+Requirement already satisfied: annotated-types>=0.6.0 in c:\users\lg897\miniconda3\lib\site-packages (from pydantic) (0.6.0)
+Requirement already satisfied: pydantic-core==2.41.5 in c:\users\lg897\miniconda3\lib\site-packages (from pydantic) (2.41.5)
+Requirement already satisfied: typing-extensions>=4.14.1 in c:\users\lg897\miniconda3\lib\site-packages (from pydantic) (4.15.0)
+Requirement already satisfied: typing-inspection>=0.4.2 in c:\users\lg897\miniconda3\lib\site-packages (from pydantic) (0.4.2)

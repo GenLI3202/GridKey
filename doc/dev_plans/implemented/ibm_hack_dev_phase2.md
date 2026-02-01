@@ -55,7 +55,7 @@ class BESSOptimizerModelIIIRenew(BESSOptimizerModelIII):
 
   
 
-    def__init__(self, alpha: float = 1.0, renewable_forecast: list = None):
+    def __init__(self, alpha: float = 1.0, renewable_forecast: list = None):
 
         super().__init__(alpha=alpha)
 
@@ -63,7 +63,7 @@ class BESSOptimizerModelIIIRenew(BESSOptimizerModelIII):
 
   
 
-    defbuild_optimization_model(self, country_data, c_rate):
+    def build_optimization_model(self, country_data, c_rate):
 
         # Call parent to build base model
 
@@ -103,7 +103,7 @@ from typing import Optional
 from .models import OptimizationInput
 
 
-classDataAdapter:
+class DataAdapter:
 
     """
 
@@ -127,7 +127,7 @@ classDataAdapter:
 
   
 
-    defadapt(
+    def adapt(
 
         self,
 
@@ -207,7 +207,7 @@ classDataAdapter:
 
   
 
-    defto_country_data(self, opt_input: OptimizationInput) -> pd.DataFrame:
+    def to_country_data(self, opt_input: OptimizationInput) -> pd.DataFrame:
 
         """
 
@@ -229,7 +229,7 @@ classDataAdapter:
 
   
 
-    def_extract_15min_prices(self, market_prices: dict, key: str) -> list:
+    def _extract_15min_prices(self, market_prices: dict, key: str) -> list:
 
         """Extract and validate 15-min resolution prices."""
 
@@ -237,7 +237,7 @@ classDataAdapter:
 
   
 
-    def_extract_block_prices(self, market_prices: dict, key: str) -> list:
+    def _extract_block_prices(self, market_prices: dict, key: str) -> list:
 
         """Extract 4-hour block prices."""
 
@@ -245,7 +245,7 @@ classDataAdapter:
 
   
 
-    def_extract_generation(self, forecast: dict) -> list:
+    def _extract_generation(self, forecast: dict) -> list:
 
         """Extract PV + Wind generation forecast."""
 

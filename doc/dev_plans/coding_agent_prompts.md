@@ -2,17 +2,17 @@
 
 ## 📋 Master Reference Files
 
-| File | Purpose |
-|------|---------|
+| File                                                  | Purpose                                             |
+| ----------------------------------------------------- | --------------------------------------------------- |
 | `../wtsx_hack_gridkey/GridKey_WatsonX_Blueprint.md` | **System architecture & module dependencies** |
-| `doc/dev_plans/ibm_hack_dev_plan.md` | Main implementation plan |
-| `doc/dev_plans/ibm_hack_dev_phase1.md` | Phase 1 details |
-| `doc/dev_plans/ibm_hack_dev_phase2.md` | Phase 2 details |
-| `doc/dev_plans/ibm_hack_dev_phase3.md` | Phase 3 details |
-| `doc/dev_plans/ibm_hack_dev_phase4.md` | Phase 4 details |
-| `data/optimizer_input_template.json` | Input format spec (from Module A/B) |
-| `data/optimizer_output_template.json` | Output format spec (to Module E) |
-| `GEMINI.md` | Project context |
+| `doc/dev_plans/ibm_hack_dev_plan.md`                | Main implementation plan                            |
+| `doc/dev_plans/ibm_hack_dev_phase1.md`              | Phase 1 details                                     |
+| `doc/dev_plans/ibm_hack_dev_phase2.md`              | Phase 2 details                                     |
+| `doc/dev_plans/ibm_hack_dev_phase3.md`              | Phase 3 details                                     |
+| `doc/dev_plans/ibm_hack_dev_phase4.md`              | Phase 4 details                                     |
+| `data/optimizer_input_template.json`                | Input format spec (from Module A/B)                 |
+| `data/optimizer_output_template.json`               | Output format spec (to Module E)                    |
+| `GEMINI.md`                                         | Project context                                     |
 
 ---
 
