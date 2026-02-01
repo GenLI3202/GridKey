@@ -73,7 +73,8 @@ class TestToCountryDataBasic:
         df = adapter.to_country_data(sample_opt_input)
         assert list(df['price_day_ahead']) == sample_opt_input.da_prices
 
-    def test_afrr_energy_mapped_directly(self, adapter, sample_opt_input):
+    def test_afrr_energy_nonzero_preserved(self, adapter, sample_opt_input):
+        """Non-zero aFRR energy prices map through unchanged (sample starts at 50.0)."""
         df = adapter.to_country_data(sample_opt_input)
         assert list(df['price_afrr_energy_pos']) == sample_opt_input.afrr_energy_pos
         assert list(df['price_afrr_energy_neg']) == sample_opt_input.afrr_energy_neg
@@ -246,6 +247,114 @@ class TestRoundTrip:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
+class TestAfrrEnergyNanConversion:
+    """CRITICAL: aFRR energy price 0 means 'not activated', not 'free energy'.
+    The adapter must convert 0 -> NaN to prevent false arbitrage."""
+
+    def test_zero_afrr_energy_becomes_nan(self, adapter, sample_block_prices):
+        """Zero aFRR energy prices must be converted to NaN in country_data."""
+        # Mix of real prices and zeros (zeros = not activated)
+        afrr_pos = [0.0, 120.5, 0.0, 80.0] * 48  # 192 entries
+        afrr_neg = [0.0, 0.0, 95.0, 0.0] * 48
+        da_prices = [50.0] * 192
+
+        opt_input = OptimizationInput(
+            da_prices=da_prices,
+            afrr_energy_pos=afrr_pos,
+            afrr_energy_neg=afrr_neg,
+            fcr_prices=sample_block_prices,
+            afrr_capacity_pos=sample_block_prices,
+            afrr_capacity_neg=sample_block_prices,
+        )
+        df = adapter.to_country_data(opt_input)
+
+        # Zeros should be NaN
+        import numpy as np
+        assert np.isnan(df['price_afrr_energy_pos'].iloc[0])
+        assert np.isnan(df['price_afrr_energy_pos'].iloc[2])
+        assert np.isnan(df['price_afrr_energy_neg'].iloc[0])
+        assert np.isnan(df['price_afrr_energy_neg'].iloc[1])
+        assert np.isnan(df['price_afrr_energy_neg'].iloc[3])
+
+        # Non-zero prices should be preserved
+        assert df['price_afrr_energy_pos'].iloc[1] == 120.5
+        assert df['price_afrr_energy_pos'].iloc[3] == 80.0
+        assert df['price_afrr_energy_neg'].iloc[2] == 95.0
+
+    def test_da_prices_not_affected_by_nan_conversion(self, adapter, sample_block_prices):
+        """DA price = 0 is valid (e.g. solar surplus). Must NOT be converted."""
+        da_prices = [0.0, 50.0, -10.0] * 64  # 192 entries
+        afrr = [40.0] * 192
+
+        opt_input = OptimizationInput(
+            da_prices=da_prices,
+            afrr_energy_pos=afrr,
+            afrr_energy_neg=afrr,
+            fcr_prices=sample_block_prices,
+            afrr_capacity_pos=sample_block_prices,
+            afrr_capacity_neg=sample_block_prices,
+        )
+        df = adapter.to_country_data(opt_input)
+        # DA zero prices must stay as 0.0
+        assert df['price_day_ahead'].iloc[0] == 0.0
+
+    def test_nan_count_matches_zero_count(self, adapter, sample_block_prices):
+        """Number of NaN in output should equal number of zeros in input."""
+        import numpy as np
+        n_zeros = 50
+        afrr = [0.0] * n_zeros + [100.0] * (192 - n_zeros)
+
+        opt_input = OptimizationInput(
+            da_prices=[50.0] * 192,
+            afrr_energy_pos=afrr,
+            afrr_energy_neg=afrr,
+            fcr_prices=sample_block_prices,
+            afrr_capacity_pos=sample_block_prices,
+            afrr_capacity_neg=sample_block_prices,
+        )
+        df = adapter.to_country_data(opt_input)
+        assert df['price_afrr_energy_pos'].isna().sum() == n_zeros
+        assert df['price_afrr_energy_neg'].isna().sum() == n_zeros
+
+    def test_round_trip_preserves_nan(self, adapter, sample_block_prices):
+        """adapt() then to_country_data() should preserve 0→NaN conversion."""
+        market_prices = {
+            'day_ahead': [50.0] * 192,
+            'afrr_energy_pos': [0.0, 100.0] * 96,  # alternating 0 and 100
+            'afrr_energy_neg': [100.0, 0.0] * 96,
+            'fcr': sample_block_prices,
+            'afrr_capacity_pos': sample_block_prices,
+            'afrr_capacity_neg': sample_block_prices,
+        }
+        import numpy as np
+        opt_input = adapter.adapt(market_prices)
+        df = adapter.to_country_data(opt_input)
+        # Every other value should be NaN
+        assert np.isnan(df['price_afrr_energy_pos'].iloc[0])
+        assert df['price_afrr_energy_pos'].iloc[1] == 100.0
+        assert df['price_afrr_energy_neg'].iloc[0] == 100.0
+        assert np.isnan(df['price_afrr_energy_neg'].iloc[1])
+
+
+class TestExtract15minNoneHandling:
+    """_extract_15min_prices must handle None (from JSON null) gracefully."""
+
+    def test_none_becomes_nan(self):
+        prices = {'afrr_energy_pos': [None, 50.0, None, 100.0]}
+        result = DataAdapter._extract_15min_prices(prices, 'afrr_energy_pos')
+        assert math.isnan(result[0])
+        assert result[1] == 50.0
+        assert math.isnan(result[2])
+        assert result[3] == 100.0
+
+    def test_mixed_none_and_zero(self):
+        prices = {'key': [None, 0.0, 50.0]}
+        result = DataAdapter._extract_15min_prices(prices, 'key')
+        assert math.isnan(result[0])  # None → NaN
+        assert result[1] == 0.0       # 0 stays 0 (conversion to NaN happens in to_country_data)
+        assert result[2] == 50.0
+
 
 class TestEdgeCases:
     def test_short_horizon(self, adapter, sample_15min_prices, sample_block_prices):

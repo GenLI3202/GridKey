@@ -1,29 +1,25 @@
-### Phase 3: Service Layer (Sequential)
+"""
+Optimizer Service Module
+========================
 
-This component is the **critical path** — it depends on both Phase 1 and Phase 2.
+This module provides the unified service layer wrapper for the BESS Optimizer,
+orchestrating the complete optimization workflow:
+1. Data validation and adaptation
+2. Model selection and construction
+3. Solving and result extraction
+4. Result formatting for API/Agent consumption
 
----
+Usage:
+    service = OptimizerService()
+    result = service.optimize(
+        market_prices=price_service.get_market_prices("DE_LU", 48),
+        generation_forecast=weather_service.get_generation_forecast("Munich", 48),
+        model_type="III",
+        c_rate=0.5,
+        alpha=1.0
+    )
+"""
 
-#### 3.1 [NEW] optimizer_service.py — OptimizerService Class
-
-Location: `src/service/optimizer_service.py`
-
-**Depends on:** `models.py` (1.1), `adapter.py` (2.2), `BESSOptimizerModelIIIRenew` (2.1)
-
-##### File Structure
-
-```
-src/
-├── core/
-│   └── optimizer.py              # Existing (extend with renewables)
-└── service/                      # NEW directory
-    ├── __init__.py
-    ├── models.py                 # Data models (Phase 1)
-    ├── adapter.py                # DataAdapter (Phase 2)
-    └── optimizer_service.py      # OptimizerService (Phase 3)
-```
-
-```python
 from typing import Optional, Dict, Any
 import logging
 
@@ -126,13 +122,13 @@ class OptimizerService:
         """
         optimizer = self._get_optimizer(opt_input.model_type.value, opt_input.alpha)
         country_data = self.adapter.to_country_data(opt_input)
-        
+
         model = optimizer.build_optimization_model(
             country_data, opt_input.c_rate, daily_cycle_limit=1.0
         )
         model, solver_results = optimizer.solve_model(model)
         solution = optimizer.extract_solution(model, solver_results)
-        
+
         return self._build_result(solution, opt_input, solver_results)
 
     def _get_optimizer(self, model_type: str, alpha: float):
@@ -279,165 +275,3 @@ class OptimizerService:
             model_type=opt_input.model_type,
             status=solution.get('status', 'optimal'),
         )
-```
-
----
-
-#### 3.2 Key Implementation Notes
-
-> [!IMPORTANT]
-> **API Consistency:** The `build_optimization_model()` method requires three parameters: `country_data`, `c_rate`, and `daily_cycle_limit`. The `solve_model()` method returns a **tuple** `(model, results)`.
-
-> [!NOTE]
-> **Model Selection:** Use `BESSOptimizerModelIIIRenew` for `"III-renew"` model type. This class already exists in `src/core/optimizer.py` (lines 2397-2681).
-
----
-
-#### 3.3 Test File: `test_optimizer_service.py`
-
-Location: `src/test/test_optimizer_service.py`
-
-```python
-"""
-Tests for src/service/optimizer_service.py — OptimizerService workflow.
-"""
-
-import pytest
-from unittest.mock import Mock, patch
-
-from src.service.optimizer_service import OptimizerService
-from src.service.models import ModelType, OptimizationInput
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def service():
-    return OptimizerService()
-
-
-@pytest.fixture
-def sample_market_prices():
-    """192 entries = 48h at 15-min resolution, 12 blocks for 4-hour prices."""
-    return {
-        'day_ahead': [50.0 + i * 0.1 for i in range(192)],
-        'afrr_energy_pos': [40.0] * 192,
-        'afrr_energy_neg': [30.0] * 192,
-        'fcr': [100.0] * 12,
-        'afrr_capacity_pos': [5.0] * 12,
-        'afrr_capacity_neg': [10.0] * 12,
-    }
-
-
-@pytest.fixture
-def sample_generation_forecast():
-    """Synthetic renewable generation (15-min resolution)."""
-    return {
-        'generation_kw': [500.0] * 192,  # Constant 500 kW
-    }
-
-
-# ---------------------------------------------------------------------------
-# Test: Service Initialization
-# ---------------------------------------------------------------------------
-
-class TestServiceInit:
-    def test_creates_adapter(self, service):
-        assert service.adapter is not None
-
-    def test_empty_cache(self, service):
-        assert service._optimizer_cache == {}
-
-
-# ---------------------------------------------------------------------------
-# Test: Model Factory (_get_optimizer)
-# ---------------------------------------------------------------------------
-
-class TestGetOptimizer:
-    def test_model_i(self, service):
-        opt = service._get_optimizer("I", 1.0)
-        assert opt.__class__.__name__ == "BESSOptimizerModelI"
-
-    def test_model_ii(self, service):
-        opt = service._get_optimizer("II", 0.5)
-        assert opt.__class__.__name__ == "BESSOptimizerModelII"
-
-    def test_model_iii(self, service):
-        opt = service._get_optimizer("III", 1.0)
-        assert opt.__class__.__name__ == "BESSOptimizerModelIII"
-
-    def test_model_iii_renew(self, service):
-        opt = service._get_optimizer("III-renew", 1.0)
-        assert opt.__class__.__name__ == "BESSOptimizerModelIIIRenew"
-
-    def test_unknown_model_raises(self, service):
-        with pytest.raises(ValueError, match="Unknown model type"):
-            service._get_optimizer("IV", 1.0)
-
-    def test_caching(self, service):
-        opt1 = service._get_optimizer("III", 1.0)
-        opt2 = service._get_optimizer("III", 1.0)
-        assert opt1 is opt2
-
-    def test_different_alpha_different_instance(self, service):
-        opt1 = service._get_optimizer("III", 1.0)
-        opt2 = service._get_optimizer("III", 0.5)
-        assert opt1 is not opt2
-
-
-# ---------------------------------------------------------------------------
-# Test: Battery Config
-# ---------------------------------------------------------------------------
-
-class TestBatteryConfig:
-    def test_default_values(self, service):
-        config = service._load_battery_config()
-        assert config['capacity_kwh'] == 4472
-        assert config['c_rate'] == 0.5
-        assert config['efficiency'] == 0.95
-        assert config['initial_soc'] == 0.5
-
-
-# ---------------------------------------------------------------------------
-# Test: End-to-End (Mocked Solver)
-# ---------------------------------------------------------------------------
-
-class TestOptimizeEndToEnd:
-    @patch.object(OptimizerService, '_get_optimizer')
-    def test_calls_optimizer_pipeline(self, mock_get_opt, service, sample_market_prices):
-        # Setup mock optimizer
-        mock_optimizer = Mock()
-        mock_model = Mock()
-        mock_results = Mock()
-        mock_results._solve_time = 1.5
-        mock_results._solver_name = 'mock'
-        mock_results.solver.termination_condition.name = 'optimal'
-
-        mock_optimizer.build_optimization_model.return_value = mock_model
-        mock_optimizer.solve_model.return_value = (mock_model, mock_results)
-        mock_optimizer.extract_solution.return_value = {
-            'status': 'optimal',
-            'objective_value': 100.0,
-            'solve_time': 1.5,
-            'solver': 'mock',
-            'profit_da': 80.0,
-            'profit_afrr_energy': 20.0,
-            'cost_cyclic': 5.0,
-            'e_soc': {t: 2236.0 for t in range(192)},
-            'p_ch': {t: 0.0 for t in range(192)},
-            'p_dis': {t: 0.0 for t in range(192)},
-        }
-        mock_get_opt.return_value = mock_optimizer
-
-        result = service.optimize(sample_market_prices)
-
-        assert result.status == 'optimal'
-        assert result.objective_value == 100.0
-        mock_optimizer.build_optimization_model.assert_called_once()
-        mock_optimizer.solve_model.assert_called_once()
-        mock_optimizer.extract_solution.assert_called_once()
-```
-
----

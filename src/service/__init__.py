@@ -12,6 +12,9 @@ Data Models:
 - ScheduleEntry: Single timestep schedule item
 - RenewableUtilization: Renewable energy utilization breakdown
 - OptimizationResult: Standardised optimizer output
+
+Service:
+- OptimizerService: Unified service wrapper for the optimization workflow
 """
 
 from .models import (
@@ -21,6 +24,7 @@ from .models import (
     RenewableUtilization,
     OptimizationResult,
 )
+from .optimizer_service import OptimizerService
 
 __all__ = [
     'ModelType',
@@ -28,6 +32,7 @@ __all__ = [
     'ScheduleEntry',
     'RenewableUtilization',
     'OptimizationResult',
+    'OptimizerService',
 ]
 
 __version__ = '1.0.0'
