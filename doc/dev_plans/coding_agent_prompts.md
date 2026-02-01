@@ -89,6 +89,7 @@ Test: Write `src/test/test_optimizer_service.py`
 Implement Phase 4 according to @ibm_hack_dev_phase4.md
 
 Tasks:
+0. Critically proofread @GridKey\doc\dev_plans\ibm_hack_dev_phase4.md, check its correctness and rigor.
 1. Create `Dockerfile`
 2. Create `src/api/main.py` — FastAPI endpoints (/health, /api/v1/optimize)
 3. Create `.github/workflows/test.yml` — CI pipeline

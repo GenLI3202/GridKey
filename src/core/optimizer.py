@@ -927,20 +927,38 @@ class BESSOptimizerModelI:
     def detect_available_solver(self) -> str:
         """
         Detect the best available solver with fallback logic.
-        
-        Priority order (per competition requirements):
-        1. CPLEX (commercial) - if available in submission system
-        2. Gurobi (commercial) - if available in submission system
-        3. HiGHS (open-source) - REQUIRED fallback for competition submission
-        
+
+        Priority order:
+        1. Environment variable GRIDKEY_SOLVER if set (for explicit control)
+        2. CPLEX (commercial) - preferred local solver
+        3. Gurobi (commercial) - fallback if CPLEX unavailable
+        4. HiGHS (open-source) - REQUIRED for production API (no license needed)
+
+        Production API Note:
+            For Docker/container deployments, use HiGHS as it requires no license.
+            Set GRIDKEY_SOLVER=highs in Dockerfile or environment.
+
         Returns:
             str: Name of the best available solver
         """
-        # Priority order: Try commercial first, fallback to open-source HiGHS
+        import os
+
+        # Check for explicit solver preference via environment variable
+        preferred_solver = os.environ.get('GRIDKEY_SOLVER', '').lower()
+        if preferred_solver:
+            logger.info(f"🎯 GRIDKEY_SOLVER environment variable set: {preferred_solver}")
+            solver = pyo.SolverFactory(preferred_solver)
+            if solver.available():
+                logger.info(f"✅ Using preferred solver: {preferred_solver}")
+                return preferred_solver
+            else:
+                logger.warning(f"⚠️  Preferred solver '{preferred_solver}' not available, falling back to auto-detection")
+
+        # Priority order for local development: CPLEX > Gurobi > HiGHS
         solver_priority = [
-            ('gurobi', 'Gurobi (commercial)'),            
             ('cplex', 'CPLEX (commercial)'),
-            ('highs', 'HiGHS (open-source, competition approved)')
+            ('gurobi', 'Gurobi (commercial)'),
+            ('highs', 'HiGHS (open-source, production-ready)')
         ]
         
         logger.info("🔍 Detecting available optimization solver...")

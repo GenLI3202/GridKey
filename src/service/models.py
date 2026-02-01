@@ -119,9 +119,11 @@ class ScheduleEntry(BaseModel):
     @field_validator('soc_after')
     @classmethod
     def soc_after_must_be_valid(cls, v: float) -> float:
-        if not (0 <= v <= 1):
+        # Allow small tolerance for floating point errors
+        if not (-1e-10 <= v <= 1.0):
             raise ValueError('soc_after must be in [0, 1]')
-        return v
+        # Clamp to [0, 1] to handle near-zero/near-one floating point issues
+        return max(0.0, min(1.0, v))
 
 
 class RenewableUtilization(BaseModel):

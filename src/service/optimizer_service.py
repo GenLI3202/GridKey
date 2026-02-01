@@ -218,7 +218,7 @@ class OptimizerService:
                 action=action,
                 power_kw=power,
                 market="da",  # Simplified; could be enhanced
-                soc_after=soc / opt_input.battery_capacity_kwh,
+                soc_after=max(0.0, min(1.0, soc / opt_input.battery_capacity_kwh)),
             )
 
             # Add renewable fields if present
@@ -230,7 +230,7 @@ class OptimizerService:
 
         # Build SOC trajectory (normalized to [0, 1])
         soc_trajectory = [
-            solution.get('e_soc', {}).get(t, 0.5) / opt_input.battery_capacity_kwh
+            max(0.0, min(1.0, solution.get('e_soc', {}).get(t, 0.5) / opt_input.battery_capacity_kwh))
             for t in range(n_timesteps)
         ]
 
