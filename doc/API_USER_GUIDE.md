@@ -1,451 +1,278 @@
-# GridKey Optimizer API - User Guide
+# GridKey Optimizer API
 
-**Version:** 1.0.0
-**Date:** 2026-02-01
-**Base URL:** `http://localhost:8000`
+- **Version:** 1.0.0
+- **Base URL:** `http://localhost:8000`
+- **Status:** Experimental
 
----
+The GridKey API is a small HTTP wrapper around the repository's optimization
+models. It demonstrates a complete request → optimization → schedule workflow,
+but it is not a production EMS interface.
 
-## Table of Contents
+## What the API does
 
-1. [Quick Start](#quick-start)
-2. [Starting the Service](#starting-the-service)
-3. [API Endpoints](#api-endpoints)
-4. [Request/Response Format](#requestresponse-format)
-5. [Usage Examples](#usage-examples)
-6. [Data Format Reference](#data-format-reference)
-7. [Error Handling](#error-handholding)
+The API accepts caller-provided market-price arrays, builds one of the GridKey
+optimization models, solves it, and returns a simplified schedule and summary.
 
----
+It currently exposes three routes:
 
-## Quick Start
+| Method and path | Purpose |
+| --- | --- |
+| `GET /health` | Report the service version and configured solver information |
+| `POST /api/v1/optimize` | Run one fixed-horizon optimization |
+| `POST /api/v1/optimize-mpc` | Run the fixed 12-hour rolling-horizon experiment |
 
-### Windows (PowerShell)
+FastAPI also provides interactive documentation:
+
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+## Start the service
+
+First complete the virtual-environment setup in the repository
+[`README.md`](../README.md), then install the API dependencies:
+
+```bash
+python -m pip install -r requirements-api.txt
+```
+
+### macOS and Linux
+
+```bash
+export GRIDKEY_SOLVER=highs
+python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+### Windows PowerShell
 
 ```powershell
-# Navigate to project directory
-cd D:\my_projects\GridPro\GridKey
-
-# Activate conda environment (if needed)
-conda activate gridkey
-
-# Start the service
-.\startup.ps1 dev
-
-# Or directly with uvicorn
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+$env:GRIDKEY_SOLVER = "highs"
+python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-### Linux/macOS
+Docker is optional. It packages the same experimental API and is not required
+to run the optimizer locally.
 
-```bash
-cd D:/my_projects/GridPro/GridKey
-./startup.sh dev
-```
+## `GET /health`
 
-Then open browser: **http://localhost:8000/docs**
+Example response:
 
----
-
-## Starting the Service
-
-### Windows (PowerShell) - Recommended
-
-```powershell
-# Make sure you're in the GridKey directory
-cd D:\my_projects\GridPro\GridKey
-
-# Activate conda environment
-conda activate gridkey
-
-# Option 1: Use the PowerShell script (dev mode with hot-reload)
-.\startup.ps1 dev
-
-# Option 2: Direct uvicorn (simplest)
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
-
-# Option 3: Production mode (no reload)
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000
-```
-
-**Note:** The `.sh` script does **not** work on Windows. Use `startup.ps1` or run uvicorn directly.
-
-### Linux/macOS
-
-```bash
-# Production mode
-./startup.sh
-
-# Development mode (hot-reload)
-./startup.sh dev
-
-# Run tests
-./startup.sh test
-```
-
-### Docker (Optional)
-
-**Note:** Docker is **not required** to run the service. Only use Docker if you want containerized deployment.
-
-```bash
-# Build image
-docker build -t gridkey-optimizer .
-
-# Run container
-docker run -p 8000:8000 gridkey-optimizer
-```
-
-### Service Access
-
-| Resource | URL |
-|----------|-----|
-| API Documentation (Swagger UI) | http://localhost:8000/docs |
-| API Documentation (ReDoc) | http://localhost:8000/redoc |
-| Health Check | http://localhost:8000/health |
-
----
-
-## API Endpoints
-
-### 1. Health Check
-
-Check service status and solver configuration.
-
-```
-GET /health
-```
-
-**Response:**
 ```json
 {
-    "status": "healthy",
-    "version": "1.0.0",
-    "solver": "auto-detected",
-    "max_horizon_hours": 12,
-    "recommended_horizon_hours": 6,
-    "note": "HiGHS (open-source) - use 6-hour rolling horizon for best performance"
+  "status": "healthy",
+  "version": "1.0.0",
+  "solver": "highs",
+  "max_horizon_hours": 12,
+  "recommended_horizon_hours": 6,
+  "note": "HiGHS (open-source) - use 6-hour rolling horizon for best performance"
 }
 ```
 
----
+This is a liveness-style endpoint. It reports configuration but does not run a
+test optimization or verify that the solver can successfully solve a model.
 
-### 2. Standard Optimization
+## `POST /api/v1/optimize`
 
-Optimize BESS operation for specified time horizon (1-12 hours).
+Runs one optimization over a caller-selected horizon.
 
-```
-POST /api/v1/optimize
-```
+### Request
 
-**Request Body:**
-```json
-{
-    "location": "Munich",
-    "country": "DE_LU",
-    "model_type": "III",
-    "c_rate": 0.5,
-    "alpha": 1.0,
-    "daily_cycle_limit": 1.0,
-    "time_horizon_hours": 6,
-    "market_prices": {
-        "day_ahead": [50.0, ...],
-        "afrr_energy_pos": [40.0, ...],
-        "afrr_energy_neg": [30.0, ...],
-        "fcr": [100.0, 105.0],
-        "afrr_capacity_pos": [5.0, 6.0],
-        "afrr_capacity_neg": [10.0, 11.0]
-    },
-    "renewable_generation": [0.0, ...]  // Optional
-}
-```
+| Field | Default | Current behavior |
+| --- | --- | --- |
+| `model_type` | `"III"` | Accepts `"I"`, `"II"`, `"III"`, or `"III-renew"` |
+| `c_rate` | `0.5` | Sets the optimizer power-to-energy ratio |
+| `alpha` | `1.0` | Weights degradation cost in Models II and III |
+| `daily_cycle_limit` | `1.0` | Used by Model I; Model II/III deactivate this constraint |
+| `time_horizon_hours` | `6` | Accepts 1–12 hours with the default/HiGHS configuration |
+| `market_prices` | required | Six caller-provided price arrays |
+| `renewable_generation` | omitted | Used by `"III-renew"` |
+| `location` | `"Munich"` | Accepted but currently not used in the calculation |
+| `country` | `"DE_LU"` | Accepted but currently not used in the calculation |
 
-**Response:**
-```json
-{
-    "status": "success",
-    "data": {
-        "objective_value": 1250.50,
-        "net_profit": 1225.50,
-        "revenue_breakdown": {
-            "da": 1000.0,
-            "afrr_energy": 150.0,
-            "fcr": 100.5
-        },
-        "degradation_cost": 25.0,
-        "schedule": [
-            {
-                "timestamp": "2024-01-01T00:00:00",
-                "action": "charge",
-                "power_kw": 500.0,
-                "market": "da",
-                "soc_after": 0.55
-            }
-        ],
-        "soc_trajectory": [0.50, 0.55, 0.60, ...],
-        "solve_time_seconds": 5.2,
-        "solver_name": "highs",
-        "model_type": "III",
-        "status": "optimal"
-    }
-}
-```
+`market_prices` must contain:
 
----
+| Key | Resolution |
+| --- | --- |
+| `day_ahead` | 15 minutes |
+| `afrr_energy_pos` | 15 minutes |
+| `afrr_energy_neg` | 15 minutes |
+| `fcr` | 4-hour blocks |
+| `afrr_capacity_pos` | 4-hour blocks |
+| `afrr_capacity_neg` | 4-hour blocks |
 
-### 3. MPC 12h Rolling Horizon
+For an `H`-hour horizon, each 15-minute array should contain `4 × H` values.
+Capacity arrays should contain enough 4-hour blocks to cover the horizon.
 
-12-hour optimization using Model Predictive Control with 6h window and 4h roll step.
+The standard endpoint checks that all arrays exist and are non-empty, but it
+does not currently enforce their exact lengths at the API boundary. Extra
+15-minute values are truncated; insufficient values can fail later during data
+adaptation. If block prices do not cover the horizon, the adapter repeats the
+last block value.
 
-```
-POST /api/v1/optimize-mpc
-```
+### Model variants
 
-**Strategy:**
-- Iteration 1: Optimize [0h-6h], commit [0h-4h]
-- Iteration 2: Optimize [4h-10h], commit [4h-8h]
-- Iteration 3: Optimize [8h-12h], commit [8h-12h]
+| Model | Optimization content |
+| --- | --- |
+| I | Market co-optimization with SOC, power, reserve, and cycle constraints |
+| II | Model I plus a segment-based cyclic aging cost |
+| III | Model II plus a piecewise-linear calendar aging cost |
+| III-renew | Model III plus simplified renewable self-use, export, and curtailment |
 
-**Estimated Time:** 15-20 seconds (3 iterations × ~5 sec each)
+### Fixed battery assumptions
 
-**Request Body:**
-```json
-{
-    "model_type": "III",
-    "c_rate": 0.5,
-    "alpha": 1.0,
-    "market_prices": {
-        "day_ahead": [50.0, ..., 50.0],  // 48 values
-        "afrr_energy_pos": [40.0, ..., 40.0],  // 48 values
-        "afrr_energy_neg": [30.0, ..., 30.0],  // 48 values
-        "fcr": [100.0, 105.0, 110.0],  // 3 blocks
-        "afrr_capacity_pos": [5.0, 6.0, 7.0],
-        "afrr_capacity_neg": [10.0, 11.0, 12.0]
-    },
-    "renewable_generation": [0.0, ..., 0.0]  // Optional, 48 values
-}
-```
+The API does not accept a complete battery configuration. The service currently
+uses:
 
----
+| Parameter | Value |
+| --- | --- |
+| Nominal capacity | 4,472 kWh |
+| Charge/discharge efficiency | 0.95 |
+| Initial SOC | 0.50 |
 
-## Request/Response Format
+Only `c_rate` is exposed through the request.
 
-### Request Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `location` | string | "Munich" | Location name |
-| `country` | string | "DE_LU" | Country code |
-| `model_type` | string | "III" | "I", "II", "III", or "III-renew" |
-| `c_rate` | float | 0.5 | Battery C-rate (0.25, 0.33, 0.5) |
-| `alpha` | float | 1.0 | Degradation cost weight |
-| `daily_cycle_limit` | float | 1.0 | Max daily cycles |
-| `time_horizon_hours` | int | 6 | Optimization horizon (1-12) |
-| `market_prices` | object | Required | Price data (see below) |
-| `renewable_generation` | array | Optional | Generation forecast (kW) |
-
-### Market Prices Structure
-
-| Field | Resolution | Description |
-|-------|------------|-------------|
-| `day_ahead` | 15-min | Day-ahead energy prices (EUR/MWh) |
-| `afrr_energy_pos` | 15-min | aFRR+ energy prices (EUR/MWh) |
-| `afrr_energy_neg` | 15-min | aFRR- energy prices (EUR/MWh) |
-| `fcr` | 4-hour blocks | FCR capacity prices (EUR/MW) |
-| `afrr_capacity_pos` | 4-hour blocks | aFRR+ capacity prices (EUR/MW) |
-| `afrr_capacity_neg` | 4-hour blocks | aFRR- capacity prices (EUR/MW) |
-
-### Response Fields
-
-| Field | Description |
-|-------|-------------|
-| `objective_value` | Raw objective function value |
-| `net_profit` | Profit after degradation costs |
-| `revenue_breakdown` | Revenue by market (da, afrr_energy, fcr) |
-| `degradation_cost` | Total degradation cost |
-| `schedule` | Array of per-timestep actions |
-| `soc_trajectory` | Normalized SOC values [0, 1] |
-| `solve_time_seconds` | Solver execution time |
-| `solver_name` | Solver used (highs, cplex, gurobi) |
-
----
-
-## Usage Examples
-
-### Example 1: Basic 6h Optimization (cURL)
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/optimize" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model_type": "III",
-    "c_rate": 0.5,
-    "time_horizon_hours": 6,
-    "market_prices": {
-      "day_ahead": [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45],
-      "afrr_energy_pos": [40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 60, 58, 56, 54, 52, 50, 48, 46, 44, 42, 40, 38],
-      "afrr_energy_neg": [30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 50, 48, 46, 44, 42, 40, 38, 36, 34, 32, 30, 28],
-      "fcr": [100.0, 105.0],
-      "afrr_capacity_pos": [5.0, 6.0],
-      "afrr_capacity_neg": [10.0, 11.0]
-    }
-  }'
-```
-
-### Example 2: With Renewable Generation (Python)
+### Minimal Python example
 
 ```python
-import requests
+import httpx
 
-API_URL = "http://localhost:8000"
+horizon_hours = 6
+n_steps = horizon_hours * 4
 
-response = requests.post(f"{API_URL}/api/v1/optimize", json={
-    "model_type": "III-renew",
-    "c_rate": 0.5,
-    "time_horizon_hours": 6,
-    "market_prices": {
-        "day_ahead": [50.0] * 24,
-        "afrr_energy_pos": [40.0] * 24,
-        "afrr_energy_neg": [30.0] * 24,
-        "fcr": [100.0, 105.0],
-        "afrr_capacity_pos": [5.0, 6.0],
-        "afrr_capacity_neg": [10.0, 11.0]
+response = httpx.post(
+    "http://localhost:8000/api/v1/optimize",
+    json={
+        "model_type": "I",
+        "c_rate": 0.5,
+        "time_horizon_hours": horizon_hours,
+        "market_prices": {
+            "day_ahead": [50.0] * n_steps,
+            "afrr_energy_pos": [40.0] * n_steps,
+            "afrr_energy_neg": [30.0] * n_steps,
+            "fcr": [100.0, 100.0],
+            "afrr_capacity_pos": [5.0, 5.0],
+            "afrr_capacity_neg": [10.0, 10.0]
+        }
     },
-    "renewable_generation": [
-        0, 0, 0, 50, 150, 300, 450, 500, 480, 400, 250, 100,
-        0, 0, 0, 0, 0, 0, 0, 50, 200, 400, 300, 100
-    ]
-})
+    timeout=120
+)
 
-result = response.json()
-print(f"Status: {result['status']}")
-print(f"Net Profit: {result['data']['net_profit']:.2f} EUR")
-print(f"Solve Time: {result['data']['solve_time_seconds']:.2f}s")
-
-# Access schedule
-for entry in result['data']['schedule'][:5]:
-    print(f"{entry['timestamp']}: {entry['action']} {entry['power_kw']}kW -> SOC {entry['soc_after']:.2%}")
+response.raise_for_status()
+print(response.json())
 ```
 
-### Example 3: MPC 12h (Python)
+### Response
 
-```python
-import requests
+The response contains:
 
-API_URL = "http://localhost:8000"
+- objective value and the API's derived `net_profit`;
+- a partial revenue breakdown;
+- reported cyclic and calendar degradation costs;
+- a 15-minute charge/discharge/idle schedule;
+- normalized SOC trajectory;
+- renewable utilization for applicable Model III-renew runs; and
+- solver name, status, and reported solve time.
 
-# Generate 12h price data (48 values @ 15-min)
-day_ahead = [50 + i for i in range(48)]  # Rising price pattern
+The output is suitable for inspecting an experiment. See
+[Known implementation limitations](#known-implementation-limitations) before
+interpreting the financial or market-level fields.
 
-response = requests.post(f"{API_URL}/api/v1/optimize-mpc", json={
-    "model_type": "III",
-    "c_rate": 0.5,
-    "market_prices": {
-        "day_ahead": day_ahead,
-        "afrr_energy_pos": [40.0] * 48,
-        "afrr_energy_neg": [30.0] * 48,
-        "fcr": [100.0, 105.0, 110.0],
-        "afrr_capacity_pos": [5.0, 6.0, 7.0],
-        "afrr_capacity_neg": [10.0, 11.0, 12.0]
-    }
-})
+## `POST /api/v1/optimize-mpc`
 
-result = response.json()
-print(f"MPC 12h Complete")
-print(f"Net Profit: {result['data']['net_profit']:.2f} EUR")
-print(f"Total Time: {result['data']['solve_time_seconds']:.2f}s")
-print(f"Schedule Length: {len(result['data']['schedule'])} timesteps")
+This endpoint runs a fixed 12-hour rolling-horizon experiment:
+
+```text
+Iteration 1: optimize 0–6 h, commit 0–4 h
+Iteration 2: optimize 4–10 h, commit 4–8 h
+Iteration 3: optimize 8–12 h, commit 8–12 h
 ```
 
----
+It requires exactly:
 
-## Data Format Reference
+- 48 values for each 15-minute market-price array;
+- 3 values for each 4-hour capacity-price array; and
+- optionally, 48 renewable-generation values.
 
-### Time Horizon vs Data Length
+The endpoint passes SOC between the three optimization windows. The horizon,
+execution step, total duration, and starting battery state are not configurable
+through this route. It is a demonstration of receding-horizon state continuity,
+not a continuously running MPC controller.
 
-| Time Horizon | 15-min Prices | 4-hour Block Prices |
-|--------------|---------------|---------------------|
-| 1 hour | 4 values | 1 block |
-| 6 hours | 24 values | 2 blocks |
-| 12 hours | 48 values | 3 blocks |
+## Known implementation limitations
 
-### Model Types
+The following limitations reflect the current code, not future design intent:
 
-| model_type | Description | Use Case |
-|------------|-------------|----------|
-| `"I"` | Base 4-market model | Fastest, no degradation |
-| `"II"` | + Cyclic aging cost | Cycle-focused degradation |
-| `"III"` | + Calendar aging cost | Full degradation (recommended) |
-| `"III-renew"` | + Renewable integration | With solar/wind generation |
+1. **No market-data retrieval.** The caller must provide every price array.
+   `country` and `location` do not select or load data.
+2. **No live battery state.** Capacity, efficiency, and initial SOC are fixed in
+   the service; the API does not accept BMS telemetry, SOH, temperature, active
+   limits, or availability.
+3. **Simplified schedule response.** Each schedule entry labels its market as
+   `"da"` regardless of the actual allocation. FCR and aFRR bid schedules are
+   not exposed separately.
+4. **Synthetic timestamps.** Returned timestamps always begin at
+   `2024-01-01T00:00:00`; the request has no `start_time`.
+5. **Aggregated capacity revenue.** FCR and aFRR capacity revenue are combined
+   internally, while the response maps that combined value to the `fcr` key.
+6. **Degradation-field mismatch.** Model III records calendar cost inside its
+   degradation metrics, while the API result builder looks for a top-level
+   `cost_calendar` value. Calendar cost can therefore be reported as zero.
+7. **`net_profit` requires caution.** Model II/III objective values already
+   subtract weighted degradation costs. The API result builder subtracts
+   reported degradation again when deriving `net_profit`, so the field can
+   double-count part of the cost.
+8. **Weak standard-request length validation.** Exact array lengths are enforced
+   for the MPC endpoint but not for the standard endpoint.
+9. **Health is not readiness.** `/health` can report `"healthy"` without testing
+   solver availability or a complete optimization.
+10. **Synchronous solve path.** Optimization runs inside the request lifecycle;
+    there is no job queue, progress endpoint, cancellation, or result storage.
 
-### C-Rate Options
+Because of these limitations, API results should be treated as experimental
+model output, not as operational dispatch instructions or commercial
+recommendations.
 
-| C-Rate | Max Power (4472 kWh) | Description |
-|--------|---------------------|-------------|
-| 0.25 | 1118 kW | Conservative |
-| 0.33 | 1492 kW | Moderate |
-| 0.5 | 2236 kW | Aggressive (default) |
+## What the API does not provide
 
----
+The current service does not provide:
 
-## Error Handling
+- BMS/PCS communication or hardware-level power commands;
+- execution feedback or closed-loop setpoint tracking;
+- telemetry ingestion and time-series persistence;
+- protection, safety, alarm, or fault handling;
+- user authentication or authorization;
+- multi-site or multi-battery management;
+- market bidding submission; or
+- production concurrency, audit, and observability controls.
 
-### HTTP Status Codes
+## Error behavior
 
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 400 | Bad Request (validation error) |
-| 500 | Internal Server Error |
+| HTTP status | Meaning |
+| --- | --- |
+| `200` | The request completed and returned a result |
+| `400` | Request validation, missing input, or model-selection error |
+| `422` | Pydantic request-schema validation error |
+| `500` | Data adaptation, model construction, solver, or response error |
 
-### Example Error Response
+Example horizon error:
 
 ```json
 {
-    "detail": "time_horizon_hours=24 exceeds maximum of 12 for auto-detected solver. HiGHS max: 12h, Commercial max: 48h. Use rolling 6-hour windows for continuous operation."
+  "detail": "time_horizon_hours=24 exceeds maximum of 12 for highs solver."
 }
 ```
 
-### Common Errors
+Commercial-solver environment values (`GRIDKEY_SOLVER=cplex` or
+`GRIDKEY_SOLVER=gurobi`) increase the API validator's maximum horizon to 48
+hours. This changes the accepted request range; it is not a guarantee of solve
+time or feasibility.
 
-| Error | Solution |
-|-------|----------|
-| Missing `market_prices` | Include all 6 price arrays |
-| Wrong array length | Match data length to time_horizon_hours |
-| Invalid `model_type` | Use "I", "II", "III", or "III-renew" |
-| Horizon too long | Use MPC endpoint for 12h, or reduce horizon |
+## Source of truth
 
----
+The current behavior is defined in:
 
-## Performance Benchmarks
-
-| Operation | Estimated Time |
-|-----------|----------------|
-| 6h optimization (HiGHS) | ~5 seconds |
-| 12h MPC (3 iterations) | ~15-20 seconds |
-| API overhead | +1-2 seconds |
-
----
-
-## Interactive Testing
-
-Use Swagger UI for interactive API exploration:
-
-1. **Start service:**
-   - Windows: `uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload`
-   - Or: `.\startup.ps1 dev`
-
-2. **Open browser:** http://localhost:8000/docs
-
-3. Click **Try it out** on any endpoint
-
-4. Fill in request body
-
-5. Click **Execute**
-
----
-
-## Support
-
-- **Documentation:** `doc/dev_plans/implemented/`
-- **Issue Tracker:** GitHub Issues
-- **Development Plan:** `doc/dev_plans/ibm_hack_dev_plan.md`
+- [`src/api/main.py`](../src/api/main.py) — routes and request schemas
+- [`src/service/adapter.py`](../src/service/adapter.py) — input conversion
+- [`src/service/optimizer_service.py`](../src/service/optimizer_service.py) —
+  optimizer orchestration and response mapping
+- [`src/service/mpc.py`](../src/service/mpc.py) — fixed 12-hour rolling horizon
+- [`src/service/models.py`](../src/service/models.py) — service data models
